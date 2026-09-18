@@ -8,8 +8,8 @@
   <!-- <url type="website">http://wiki.ros.org/interbotix_xsarm_puppet</url> -->
   <author email="tonyzhao@stanford.edu">Tony Zhao</author>
 
-  <!-- The *depend tags are used to specify dependencies -->
-  <!-- Dependencies can be catkin packages or system dependencies -->
+  <!-- *depend 标签用于指定依赖项 -->
+  <!-- 依赖项可以是 catkin 包或系统依赖 -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>interbotix_xs_msgs</build_depend>
   <build_depend>interbotix_xsarm_control</build_depend>
@@ -39,8 +39,8 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
 
-  <!-- The export tag contains other, unspecified, tags -->
+  <!-- export 标签包含其他未指定的标签 -->
   <export>
-    <!-- Other tools can request additional information be placed here -->
+    <!-- 其他工具可在此处放置额外的信息 -->
   </export>
 </package>

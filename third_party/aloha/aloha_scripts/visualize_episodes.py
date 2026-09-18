@@ -55,7 +55,7 @@ def save_videos(video, dt, video_path=None):
             images = []
             for cam_name in cam_names:
                 image = image_dict[cam_name]
-                image = image[:, :, [2, 1, 0]] # swap B and R channel
+                image = image[:, :, [2, 1, 0]] # 交换 B 和 R 通道
                 images.append(image)
             images = np.concatenate(images, axis=1)
             out.write(images)
@@ -66,14 +66,14 @@ def save_videos(video, dt, video_path=None):
         all_cam_videos = []
         for cam_name in cam_names:
             all_cam_videos.append(video[cam_name])
-        all_cam_videos = np.concatenate(all_cam_videos, axis=2) # width dimension
+        all_cam_videos = np.concatenate(all_cam_videos, axis=2) # 宽度维度
 
         n_frames, h, w, _ = all_cam_videos.shape
         fps = int(1 / dt)
         out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
         for t in range(n_frames):
             image = all_cam_videos[t]
-            image = image[:, :, [2, 1, 0]]  # swap B and R channel
+            image = image[:, :, [2, 1, 0]]  # 交换 B 和 R 通道
             out.write(image)
         out.release()
         print(f'Saved video to: {video_path}')
@@ -92,7 +92,7 @@ def visualize_joints(qpos_list, command_list, plot_path=None, ylim=None, label_o
     num_figs = num_dim
     fig, axs = plt.subplots(num_figs, 1, figsize=(w, h * num_figs))
 
-    # plot joint state
+    # 绘制关节状态
     all_names = [name + '_left' for name in STATE_NAMES] + [name + '_right' for name in STATE_NAMES]
     for dim_idx in range(num_dim):
         ax = axs[dim_idx]
@@ -100,7 +100,7 @@ def visualize_joints(qpos_list, command_list, plot_path=None, ylim=None, label_o
         ax.set_title(f'Joint {dim_idx}: {all_names[dim_idx]}')
         ax.legend()
 
-    # plot arm command
+    # 绘制机械臂指令
     for dim_idx in range(num_dim):
         ax = axs[dim_idx]
         ax.plot(command[:, dim_idx], label=label2)
@@ -123,7 +123,7 @@ def visualize_single(efforts_list, label, plot_path=None, ylim=None, label_overw
     num_figs = num_dim
     fig, axs = plt.subplots(num_figs, 1, figsize=(w, h * num_figs))
 
-    # plot joint state
+    # 绘制关节状态
     all_names = [name + '_left' for name in STATE_NAMES] + [name + '_right' for name in STATE_NAMES]
     for dim_idx in range(num_dim):
         ax = axs[dim_idx]
@@ -146,7 +146,7 @@ def visualize_timestamp(t_list, dataset_path):
     plot_path = dataset_path.replace('.pkl', '_timestamp.png')
     h, w = 4, 10
     fig, axs = plt.subplots(2, 1, figsize=(w, h*2))
-    # process t_list
+    # 处理 t_list
     t_float = []
     for secs, nsecs in t_list:
         t_float.append(secs + nsecs * 10E-10)

@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(aloha)
 
-## Compile as C++11, supported in ROS Kinetic and newer
+## 编译为 C++11，ROS Kinetic 及更新版本支持
 add_compile_options(-std=c++11)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
+## 查找 catkin 宏和库
+## 如果使用了类似 find_package(catkin REQUIRED COMPONENTS xyz) 的 COMPONENTS 列表
+## 也会查找其他 catkin 包
 find_package(catkin REQUIRED COMPONENTS
   interbotix_xs_msgs
   interbotix_xsarm_control
@@ -30,20 +30,20 @@ generate_messages(
 )
 
 ###################################
-## catkin specific configuration ##
+## catkin 特定配置 ##
 ###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
+## catkin_package 宏会为包生成 cmake 配置文件
+## 声明要传递给依赖项目的各项内容
 catkin_package(
  CATKIN_DEPENDS interbotix_xs_msgs interbotix_xsarm_control rosbag roscpp tf2_ros rviz sensor_msgs std_msgs std_srvs
 )
 
 ###########
-## Build ##
+## 构建 ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
+## 指定头文件的额外位置
+## 你的包位置应列在其他位置之前
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )

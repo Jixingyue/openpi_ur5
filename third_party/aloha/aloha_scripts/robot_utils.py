@@ -248,30 +248,30 @@ def torque_on(bot):
     bot.dxl.robot_torque_enable("single", "gripper", True)
 
 
-# for DAgger
+# 用于 DAgger
 def sync_puppet_to_master(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right):
     print("\nSyncing!")
 
-    # activate master arms
+    # 激活主机械臂
     torque_on(master_bot_left)
     torque_on(master_bot_right)
 
-    # get puppet arm positions
+    # 获取从机械臂位置
     puppet_left_qpos = get_arm_joint_positions(puppet_bot_left)
     puppet_right_qpos = get_arm_joint_positions(puppet_bot_right)
 
-    # get puppet gripper positions
+    # 获取从机器人夹爪位置
     puppet_left_gripper = get_arm_gripper_positions(puppet_bot_left)
     puppet_right_gripper = get_arm_gripper_positions(puppet_bot_right)
 
-    # move master arms to puppet positions
+    # 将主机械臂移动到从机械臂位置
     move_arms(
         [master_bot_left, master_bot_right],
         [puppet_left_qpos, puppet_right_qpos],
         move_time=1,
     )
 
-    # move master grippers to puppet positions
+    # 将主夹爪移动到从夹爪位置
     move_grippers(
         [master_bot_left, master_bot_right],
         [puppet_left_gripper, puppet_right_gripper],

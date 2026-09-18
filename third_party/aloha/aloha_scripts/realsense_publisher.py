@@ -4,7 +4,7 @@ import time
 
 from cv_bridge import CvBridge
 import numpy as np
-import pyrealsense2 as rs         # Intel RealSense cross-platform open-source API
+import pyrealsense2 as rs         # Intel RealSense 跨平台开源 API
 import rospy
 
 from aloha.msg import RGBGrayscaleImage
@@ -19,7 +19,7 @@ rospy.init_node('realsense_publisher')
 camera_names = ['cam_left_wrist', 'cam_high', 'cam_low', 'cam_right_wrist']
 camera_sns = ['130322270931', '128422272318', '218722271368', '130322271696'] #'218622270083', '127122270166']
 cam_dict = dict(zip(camera_sns,camera_names))
-mean_intensity_set_point_config = { # NOTE these numbers are specific to your lighting setup
+mean_intensity_set_point_config = { # 注意：这些数值取决于你的光照设置
     'cam_left_wrist': 500,
     'cam_high': 500,
     'cam_right_wrist': 500,
@@ -150,7 +150,7 @@ while not rospy.is_shutdown():
             break
 
         color_frame = np.array(frameset.get_color_frame().get_data())
-        # Conver to RGB
+        # 转换为 RGB
         color_frame = color_frame[..., ::-1]
         # depth_frame = np.array(frameset.get_depth_frame().get_data())
         

@@ -28,7 +28,7 @@ def main(args):
     for action in actions:
         env.step(action)
 
-    move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
+    move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # 张开
 
 
 if __name__ == '__main__':

@@ -18,8 +18,8 @@ e = IPython.embed
 
 
 def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right):
-    """ Move all 4 robots to a pose where it is easy to start demonstration """
-    # reboot gripper motors, and set operating modes for all motors
+    """ 将全部 4 个机器人移动到便于开始演示的位姿 """
+    # 重启夹爪电机，并为所有电机设置工作模式
     puppet_bot_left.dxl.robot_reboot_motors("single", "gripper", True)
     puppet_bot_left.dxl.robot_set_operating_modes("group", "arm", "position")
     puppet_bot_left.dxl.robot_set_operating_modes("single", "gripper", "current_based_position")
@@ -39,15 +39,15 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
     torque_on(puppet_bot_right)
     torque_on(master_bot_right)
 
-    # move arms to starting position
+    # 将机械臂移动到起始位置
     start_arm_qpos = START_ARM_POSE[:6]
     move_arms([master_bot_left, puppet_bot_left, master_bot_right, puppet_bot_right], [start_arm_qpos] * 4, move_time=1.5)
-    # move grippers to starting position
+    # 将夹爪移动到起始位置
     move_grippers([master_bot_left, puppet_bot_left, master_bot_right, puppet_bot_right], [MASTER_GRIPPER_JOINT_MID, PUPPET_GRIPPER_JOINT_CLOSE] * 2, move_time=0.5)
 
 
-    # press gripper to start data collection
-    # disable torque for only gripper joint of master robot to allow user movement
+    # 捏合夹爪以开始数据采集
+    # 仅关闭主机器人夹爪关节的力矩，以允许用户移动
     master_bot_left.dxl.robot_torque_enable("single", "gripper", False)
     master_bot_right.dxl.robot_torque_enable("single", "gripper", False)
     print(f'Close the gripper to start')
@@ -67,14 +67,14 @@ def opening_ceremony(master_bot_left, master_bot_right, puppet_bot_left, puppet_
 def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_name, overwrite):
     print(f'Dataset name: {dataset_name}')
 
-    # source of data
+    # 数据来源
     master_bot_left = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
                                               robot_name=f'master_left', init_node=True)
     master_bot_right = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
                                                robot_name=f'master_right', init_node=False)
     env = make_real_env(init_node=False, setup_robots=False)
 
-    # saving dataset
+    # 保存数据集
     if not os.path.isdir(dataset_dir):
         os.makedirs(dataset_dir)
     dataset_path = os.path.join(dataset_dir, dataset_name)
@@ -82,10 +82,10 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         print(f'Dataset already exist at \n{dataset_path}\nHint: set overwrite to True.')
         exit()
 
-    # move all 4 robots to a starting pose where it is easy to start teleoperation, then wait till both gripper closed
+    # 将全部 4 个机器人移动到便于开始遥操作的起始位姿，然后等待两个夹爪均闭合
     opening_ceremony(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right)
 
-    # Data collection
+    # 数据采集
     ts = env.reset(fake=True)
     timesteps = [ts]
     actions = []
@@ -100,10 +100,10 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         actions.append(action)
         actual_dt_history.append([t0, t1, t2])
 
-    # Torque on both master bots
+    # 开启两个主机器人的力矩
     torque_on(master_bot_left)
     torque_on(master_bot_right)
-    # Open puppet grippers
+    # 张开从机器人夹爪
     move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)
 
     freq_mean = print_dt_diagnosis(actual_dt_history)
@@ -111,7 +111,7 @@ def capture_one_episode(dt, max_timesteps, camera_names, dataset_dir, dataset_na
         return False
 
     """
-    For each timestep:
+    对于每个时间步：
     observations
     - images
         - cam_high          (480, 640, 3) 'uint8'
