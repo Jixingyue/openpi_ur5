@@ -1,13 +1,13 @@
-"""Fix HuggingFace parquet schema metadata for LeRobot v2.1 datasets.
+"""修复 LeRobot v2.1 数据集的 HuggingFace parquet schema 元数据。
 
-Some converters write ``_type: \"List\"`` for vector features. Newer ``datasets`` rejects
-``List`` and expects ``Sequence``, which breaks ``LeRobotDataset`` / ``load_dataset('parquet', ...)``.
+某些转换器会为向量特征写入 ``_type: \"List\"``。较新版本的 ``datasets`` 会拒绝
+``List`` 并期望 ``Sequence``，从而导致 ``LeRobotDataset`` / ``load_dataset('parquet', ...)`` 无法工作。
 
-Usage:
+用法：
   uv run scripts/fix_lerobot_parquet_hf_metadata.py /path/to/dataset_root
-  # dataset_root: folder that contains ``data/`` and ``meta/`` (e.g. ``.../data_converted``).
+  # dataset_root：同时包含 ``data/`` 和 ``meta/`` 的目录（例如 ``.../data_converted``）。
 
-Optional: ``--dry-run`` to only print files that would change.
+可选：使用 ``--dry-run`` 仅打印将会被修改的文件。
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def _count_list_markers(obj: Any) -> int:
 
 
 def _patch_hf_metadata(obj: Any) -> int:
-    """Recursively replace ``_type: List`` -> ``Sequence``. Returns number of replacements."""
+    """递归地将 ``_type: List`` 替换为 ``Sequence``。返回替换次数。"""
     n = 0
     if isinstance(obj, dict):
         if obj.get("_type") == "List":
@@ -50,7 +50,7 @@ def _patch_hf_metadata(obj: Any) -> int:
 
 
 def fix_parquet(path: pathlib.Path) -> tuple[bool, int]:
-    """Return (changed, num_list_replacements)."""
+    """返回 (是否修改, List 替换次数)。"""
     table = pq.read_table(path)
     meta = dict(table.schema.metadata or {})
     if b"huggingface" not in meta:
@@ -70,7 +70,7 @@ def main(
     *,
     dry_run: bool = False,
 ):
-    """Patch every ``*.parquet`` under ``dataset_root/data`` (or under ``dataset_root`` if no data/)."""
+    """修补 ``dataset_root/data`` 下的每个 ``*.parquet``（若没有 data/ 目录，则修补 ``dataset_root`` 下的）。"""
     data_dir = dataset_root / "data" if (dataset_root / "data").is_dir() else dataset_root
     paths = sorted(data_dir.rglob("*.parquet"))
     if not paths:

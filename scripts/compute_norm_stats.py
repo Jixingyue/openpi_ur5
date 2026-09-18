@@ -1,8 +1,7 @@
-"""Compute normalization statistics for a config.
+"""为某个配置计算归一化统计量。
 
-This script is used to compute the normalization statistics for a given config. It
-will compute the mean and standard deviation of the data in the dataset and save it
-to the config assets directory.
+本脚本用于计算给定配置的归一化统计量。它会计算数据集中数据的均值和标准差，
+并将其保存到配置的 assets 目录中。
 """
 
 import numpy as np
@@ -37,7 +36,7 @@ def create_torch_dataloader(
         [
             *data_config.repack_transforms.inputs,
             *data_config.data_transforms.inputs,
-            # Remove strings since they are not supported by JAX and are not needed to compute norm stats.
+            # 移除字符串，因为 JAX 不支持它们，且计算归一化统计量也不需要它们。
             RemoveStrings(),
         ],
     )
@@ -69,7 +68,7 @@ def create_rlds_dataloader(
         [
             *data_config.repack_transforms.inputs,
             *data_config.data_transforms.inputs,
-            # Remove strings since they are not supported by JAX and are not needed to compute norm stats.
+            # 移除字符串，因为 JAX 不支持它们，且计算归一化统计量也不需要它们。
             RemoveStrings(),
         ],
         is_batched=True,
@@ -77,7 +76,7 @@ def create_rlds_dataloader(
     if max_frames is not None and max_frames < len(dataset):
         num_batches = max_frames // batch_size
     else:
-        # NOTE: this length is currently hard-coded for DROID.
+        # 注意：目前该长度对 DROID 是硬编码的。
         num_batches = len(dataset) // batch_size
     data_loader = _data_loader.RLDSDataLoader(
         dataset,

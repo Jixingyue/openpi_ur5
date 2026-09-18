@@ -25,6 +25,6 @@ def test_train(tmp_path: pathlib.Path, config_name: str):
     )
     train.main(config)
 
-    # test resuming
+    # 测试从 checkpoint 恢复训练
     config = dataclasses.replace(config, resume=True, num_train_steps=4)
     train.main(config)

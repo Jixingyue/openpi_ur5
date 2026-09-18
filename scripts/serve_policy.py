@@ -12,7 +12,7 @@ from openpi.training import config as _config
 
 
 class EnvMode(enum.Enum):
-    """Supported environments."""
+    """支持的环境。"""
 
     ALOHA = "aloha"
     ALOHA_SIM = "aloha_sim"
@@ -22,40 +22,40 @@ class EnvMode(enum.Enum):
 
 @dataclasses.dataclass
 class Checkpoint:
-    """Load a policy from a trained checkpoint."""
+    """从训练好的 checkpoint 加载策略。"""
 
-    # Training config name (e.g., "pi0_aloha_sim").
+    # 训练配置名称（例如 "pi0_aloha_sim"）。
     config: str
-    # Checkpoint directory (e.g., "checkpoints/pi0_aloha_sim/exp/10000").
+    # Checkpoint 目录（例如 "checkpoints/pi0_aloha_sim/exp/10000"）。
     dir: str
 
 
 @dataclasses.dataclass
 class Default:
-    """Use the default policy for the given environment."""
+    """为给定环境使用默认策略。"""
 
 
 @dataclasses.dataclass
 class Args:
-    """Arguments for the serve_policy script."""
+    """serve_policy 脚本的参数。"""
 
-    # Environment to serve the policy for. This is only used when serving default policies.
+    # 为该环境部署策略。仅在部署默认策略时使用。
     env: EnvMode = EnvMode.ALOHA_SIM
 
-    # If provided, will be used in case the "prompt" key is not present in the data, or if the model doesn't have a default
-    # prompt.
+    # 如果提供，当数据中不存在 "prompt" 键，或模型没有默认
+    # prompt 时会使用。
     default_prompt: str | None = None
 
-    # Port to serve the policy on.
+    # 部署策略的端口。
     port: int = 8000
-    # Record the policy's behavior for debugging.
+    # 记录策略的行为以便调试。
     record: bool = False
 
-    # Specifies how to load the policy. If not provided, the default policy for the environment will be used.
+    # 指定如何加载策略。如果未提供，则使用该环境的默认策略。
     policy: Checkpoint | Default = dataclasses.field(default_factory=Default)
 
 
-# Default checkpoints that should be used for each environment.
+# 每个环境应使用的默认 checkpoint。
 DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.ALOHA: Checkpoint(
         config="pi05_aloha",
@@ -77,7 +77,7 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
 
 
 def create_default_policy(env: EnvMode, *, default_prompt: str | None = None) -> _policy.Policy:
-    """Create a default policy for the given environment."""
+    """为给定环境创建默认策略。"""
     if checkpoint := DEFAULT_CHECKPOINT.get(env):
         return _policy_config.create_trained_policy(
             _config.get_config(checkpoint.config), checkpoint.dir, default_prompt=default_prompt
@@ -86,7 +86,7 @@ def create_default_policy(env: EnvMode, *, default_prompt: str | None = None) ->
 
 
 def create_policy(args: Args) -> _policy.Policy:
-    """Create a policy from the given arguments."""
+    """根据给定的参数创建策略。"""
     match args.policy:
         case Checkpoint():
             return _policy_config.create_trained_policy(
@@ -100,7 +100,7 @@ def main(args: Args) -> None:
     policy = create_policy(args)
     policy_metadata = policy.metadata
 
-    # Record the policy's behavior.
+    # 记录策略的行为。
     if args.record:
         policy = _policy.PolicyRecorder(policy, "policy_records")
 
