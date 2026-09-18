@@ -18,7 +18,7 @@ from libero.lifelong.utils import *
 
 def raw_obs_to_tensor_obs(obs, task_emb, cfg):
     """
-    Prepare the tensor observations as input for the algorithm.
+    准备张量观测值，作为算法的输入。
     """
     env_num = len(obs)
 
@@ -53,20 +53,20 @@ def evaluate_one_task_success(
     cfg, algo, task, task_emb, task_id, sim_states=None, task_str=""
 ):
     """
-    Evaluate a single task's success rate
-    sim_states: if not None, will keep track of all simulated states during
-                evaluation, mainly for visualization and debugging purpose
-    task_str:   the key to access sim_states dictionary
+    评估单个任务的成功率
+    sim_states：如果不为 None，将在评估过程中跟踪所有仿真状态，
+                主要用于可视化和调试目的
+    task_str：   用于访问 sim_states 字典的键
     """
     with Timer() as t:
-        if cfg.lifelong.algo == "PackNet":  # need preprocess weights for PackNet
+        if cfg.lifelong.algo == "PackNet":  # PackNet 需要预处理权重
             algo = algo.get_eval_algo(task_id)
 
         algo.eval()
         env_num = min(cfg.eval.num_procs, cfg.eval.n_eval) if cfg.eval.use_mp else 1
         eval_loop_num = (cfg.eval.n_eval + env_num - 1) // env_num
 
-        # initiate evaluation envs
+        # 初始化评估环境
         env_args = {
             "bddl_file_name": os.path.join(
                 cfg.bddl_folder, task.problem_folder, task.bddl_file
@@ -78,7 +78,7 @@ def evaluate_one_task_success(
         env_num = min(cfg.eval.num_procs, cfg.eval.n_eval) if cfg.eval.use_mp else 1
         eval_loop_num = (cfg.eval.n_eval + env_num - 1) // env_num
 
-        # Try to handle the frame buffer issue
+        # 尝试处理帧缓冲区问题
         env_creation = False
 
         count = 0
@@ -99,8 +99,8 @@ def evaluate_one_task_success(
         if count >= 5:
             raise Exception("Failed to create environment")
 
-        ### Evaluation loop
-        # get fixed init states to control the experiment randomness
+        ### 评估循环
+        # 获取固定的初始状态以控制实验随机性
         init_states_path = os.path.join(
             cfg.init_states_folder, task.problem_folder, task.init_states_file
         )
@@ -116,7 +116,7 @@ def evaluate_one_task_success(
             algo.reset()
             obs = env.set_init_state(init_states_)
 
-            # dummy actions [env_num, 7] all zeros for initial physics simulation
+            # 虚拟动作 [env_num, 7] 全为零，用于初始物理仿真
             dummy = np.zeros((env_num, 7))
             for _ in range(5):
                 obs, _, _, _ = env.step(dummy)
@@ -135,21 +135,21 @@ def evaluate_one_task_success(
 
                 obs, reward, done, info = env.step(actions)
 
-                # record the sim states for replay purpose
+                # 记录仿真状态以用于回放目的
                 if task_str != "":
                     sim_state = env.get_sim_state()
                     for k in range(env_num):
                         if i * env_num + k < cfg.eval.n_eval and sim_states is not None:
                             sim_states[i * env_num + k].append(sim_state[k])
 
-                # check whether succeed
+                # 检查是否成功
                 for k in range(env_num):
                     dones[k] = dones[k] or done[k]
 
                 if all(dones):
                     break
 
-            # a new form of success record
+            # 一种新形式的成功记录
             for k in range(env_num):
                 if i * env_num + k < cfg.eval.n_eval:
                     num_success += int(dones[k])
@@ -163,7 +163,7 @@ def evaluate_one_task_success(
 
 def evaluate_success(cfg, algo, benchmark, task_ids, result_summary=None):
     """
-    Evaluate the success rate for all task in task_ids.
+    评估 task_ids 中所有任务的成功率。
     """
     algo.eval()
     successes = []
@@ -181,7 +181,7 @@ def evaluate_success(cfg, algo, benchmark, task_ids, result_summary=None):
 
 def evaluate_multitask_training_success(cfg, algo, benchmark, task_ids):
     """
-    Evaluate the success rate for all task in task_ids.
+    评估 task_ids 中所有任务的成功率。
     """
     algo.eval()
     successes = []
@@ -196,12 +196,12 @@ def evaluate_multitask_training_success(cfg, algo, benchmark, task_ids):
 @torch.no_grad()
 def evaluate_loss(cfg, algo, benchmark, datasets):
     """
-    Evaluate the loss on all datasets.
+    评估在所有数据集上的损失。
     """
     algo.eval()
     losses = []
     for i, dataset in enumerate(datasets):
-        if cfg.lifelong.algo == "PackNet":  # need preprocess weights for PackNet
+        if cfg.lifelong.algo == "PackNet":  # PackNet 需要预处理权重
             algo = algo.get_eval_algo(task_id=i)
 
         dataloader = DataLoader(

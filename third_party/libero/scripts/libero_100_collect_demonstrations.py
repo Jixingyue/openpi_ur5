@@ -1,10 +1,10 @@
 """
-Modified from robosuite example scripts.
-A script to collect a batch of human demonstrations that can be used
-to generate a learning curriculum (see `demo_learning_curriculum.py`).
+修改自 robosuite 示例脚本。
+一个用于收集一批人类演示的脚本，这些演示可用于
+生成学习课程（参见 `demo_learning_curriculum.py`）。
 
-The demonstrations can be played back using the `playback_demonstrations_from_pkl.py`
-script.
+这些演示可以使用 `playback_demonstrations_from_pkl.py`
+脚本回放。
 
 """
 
@@ -33,15 +33,15 @@ def collect_human_trajectory(
     env, device, arm, env_configuration, problem_info, remove_directory=[]
 ):
     """
-    Use the device (keyboard or SpaceNav 3D mouse) to collect a demonstration.
-    The rollout trajectory is saved to files in npz format.
-    Modify the DataCollectionWrapper wrapper to add new fields or change data formats.
+    使用设备（键盘或 SpaceNav 3D 鼠标）来收集一个演示。
+    rollout 轨迹以 npz 格式保存到文件中。
+    修改 DataCollectionWrapper 包装器以添加新字段或更改数据格式。
 
-    Args:
-        env (MujocoEnv): environment to control
-        device (Device): to receive controls from the device
-        arms (str): which arm to control (eg bimanual) 'right' or 'left'
-        env_configuration (str): specified environment configuration
+    参数：
+        env (MujocoEnv)：要控制的环境
+        device (Device)：用于从设备接收控制信号
+        arms (str)：控制哪个机械臂（例如双臂）'right' 或 'left'
+        env_configuration (str)：指定的环境配置
     """
 
     reset_success = False
@@ -52,28 +52,28 @@ def collect_human_trajectory(
         except:
             continue
 
-    # ID = 2 always corresponds to agentview
+    # ID = 2 总是对应 agentview
     env.render()
 
     task_completion_hold_count = (
         -1
-    )  # counter to collect 10 timesteps after reaching goal
+    )  # 用于在达到目标后收集 10 个时间步的计数器
     device.start_control()
 
-    # Loop until we get a reset from the input or the task completes
+    # 循环直到我们从输入获得重置或任务完成
     saving = True
     count = 0
 
     while True:
         count += 1
-        # Set active robot
+        # 设置活动机器人
         active_robot = (
             env.robots[0]
             if env_configuration == "bimanual"
             else env.robots[arm == "left"]
         )
 
-        # Get the newest action
+        # 获取最新的动作
         action, grasp = input2action(
             device=device,
             robot=active_robot,
@@ -81,30 +81,30 @@ def collect_human_trajectory(
             env_configuration=env_configuration,
         )
 
-        # If action is none, then this a reset so we should break
+        # 如果 action 为 none，那么这是一次重置，因此我们应该 break
         if action is None:
             print("Break")
             saving = False
             break
-        # Run environment step
+        # 运行环境 step
 
         env.step(action)
         env.render()
-        # Also break if we complete the task
+        # 如果我们完成了任务也 break
         if task_completion_hold_count == 0:
             break
 
-        # state machine to check for having a success for 10 consecutive timesteps
+        # 状态机，用于检查是否连续 10 个时间步都成功
         if env._check_success():
             if task_completion_hold_count > 0:
-                task_completion_hold_count -= 1  # latched state, decrement count
+                task_completion_hold_count -= 1  # 锁定状态，递减计数
             else:
-                task_completion_hold_count = 10  # reset count on first success timestep
+                task_completion_hold_count = 10  # 在第一个成功时间步重置计数
         else:
-            task_completion_hold_count = -1  # null the counter if there's no success
+            task_completion_hold_count = -1  # 如果没有成功则将计数器置空
 
     print(count)
-    # cleanup for end of data collection episodes
+    # 数据收集回合结束时的清理工作
     if not saving:
         remove_directory.append(env.ep_directory.split("/")[-1])
     env.close()
@@ -115,40 +115,40 @@ def gather_demonstrations_as_hdf5(
     directory, out_dir, env_info, args, remove_directory=[]
 ):
     """
-    Gathers the demonstrations saved in @directory into a
-    single hdf5 file.
+    将保存在 @directory 中的演示汇集到
+    单个 hdf5 文件中。
 
-    The strucure of the hdf5 file is as follows.
+    hdf5 文件的结构如下。
 
     data (group)
-        date (attribute) - date of collection
-        time (attribute) - time of collection
-        repository_version (attribute) - repository version used during collection
-        env (attribute) - environment name on which demos were collected
+        date (attribute) - 收集日期
+        time (attribute) - 收集时间
+        repository_version (attribute) - 收集期间使用的仓库版本
+        env (attribute) - 收集演示时所处的环境名称
 
-        demo1 (group) - every demonstration has a group
-            model_file (attribute) - model xml string for demonstration
-            states (dataset) - flattened mujoco states
-            actions (dataset) - actions applied during demonstration
+        demo1 (group) - 每个演示都有一个组
+            model_file (attribute) - 演示的模型 xml 字符串
+            states (dataset) - 展平的 mujoco 状态
+            actions (dataset) - 演示期间应用的动作
 
         demo2 (group)
         ...
 
-    Args:
-        directory (str): Path to the directory containing raw demonstrations.
-        out_dir (str): Path to where to store the hdf5 file.
-        env_info (str): JSON-encoded string containing environment information,
-            including controller and robot info
+    参数：
+        directory (str)：包含原始演示的目录路径。
+        out_dir (str)：存储 hdf5 文件的路径。
+        env_info (str)：包含环境信息的 JSON 编码字符串，
+            包括控制器和机器人信息
     """
 
     hdf5_path = os.path.join(out_dir, "demo.hdf5")
     f = h5py.File(hdf5_path, "w")
 
-    # store some metadata in the attributes of one group
+    # 将一些元数据存储在一个组的属性中
     grp = f.create_group("data")
 
     num_eps = 0
-    env_name = None  # will get populated at some point
+    env_name = None  # 将在某个时刻被填充
 
     for ep_directory in os.listdir(directory):
         # print(ep_directory)
@@ -170,25 +170,25 @@ def gather_demonstrations_as_hdf5(
         if len(states) == 0:
             continue
 
-        # Delete the first actions and the last state. This is because when the DataCollector wrapper
-        # recorded the states and actions, the states were recorded AFTER playing that action.
+        # 删除第一个动作和最后一个状态。这是因为当 DataCollector 包装器
+        # 记录状态和动作时，状态是在执行该动作之后记录的。
         del states[-1]
         assert len(states) == len(actions)
 
         num_eps += 1
         ep_data_grp = grp.create_group("demo_{}".format(num_eps))
 
-        # store model xml as an attribute
+        # 将模型 xml 存储为属性
         xml_path = os.path.join(directory, ep_directory, "model.xml")
         with open(xml_path, "r") as f:
             xml_str = f.read()
         ep_data_grp.attrs["model_file"] = xml_str
 
-        # write datasets for states and actions
+        # 为状态和动作写入数据集
         ep_data_grp.create_dataset("states", data=np.array(states))
         ep_data_grp.create_dataset("actions", data=np.array(actions))
 
-    # write dataset attributes (metadata)
+    # 写入数据集属性（元数据）
     now = datetime.datetime.now()
     grp.attrs["date"] = "{}-{}-{}".format(now.month, now.day, now.year)
     grp.attrs["time"] = "{}:{}:{}".format(now.hour, now.minute, now.second)
@@ -204,7 +204,7 @@ def gather_demonstrations_as_hdf5(
 
 
 if __name__ == "__main__":
-    # Arguments
+    # 参数
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--directory",
@@ -269,10 +269,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Get controller config
+    # 获取控制器配置
     controller_config = load_controller_config(default_controller=args.controller)
 
-    # Create argument configuration
+    # 创建参数配置
     config = {
         "robots": args.robots,
         "controller_configs": controller_config,
@@ -280,9 +280,9 @@ if __name__ == "__main__":
 
     assert os.path.exists(args.bddl_file)
     problem_info = BDDLUtils.get_problem_info(args.bddl_file)
-    # Check if we're using a multi-armed environment and use env_configuration argument if so
+    # 检查我们是否在使用多臂环境，如果是则使用 env_configuration 参数
 
-    # Create environment
+    # 创建环境
     problem_name = problem_info["problem_name"]
     domain_name = problem_info["domain_name"]
     language_instruction = problem_info["language_instruction"]
@@ -307,13 +307,13 @@ if __name__ == "__main__":
         control_freq=20,
     )
 
-    # Wrap this with visualization wrapper
+    # 用可视化包装器包装它
     env = VisualizationWrapper(env)
 
-    # Grab reference to controller config and convert it to json-encoded string
+    # 获取控制器配置的引用并将其转换为 json 编码的字符串
     env_info = json.dumps(config)
 
-    # wrap the environment with data collection wrapper
+    # 用数据收集包装器包装环境
     tmp_directory = "demonstration_data/tmp/{}_ln_{}/{}".format(
         problem_name,
         language_instruction.replace(" ", "_").strip('""'),
@@ -322,7 +322,7 @@ if __name__ == "__main__":
 
     env = DataCollectionWrapper(env, tmp_directory)
 
-    # initialize device
+    # 初始化设备
     if args.device == "keyboard":
         from robosuite.devices import Keyboard
 
@@ -346,7 +346,7 @@ if __name__ == "__main__":
             "Invalid device choice: choose either 'keyboard' or 'spacemouse'."
         )
 
-    # make a new timestamped directory
+    # 创建一个新的带时间戳的目录
     t1, t2 = str(time.time()).split(".")
     new_dir = os.path.join(
         args.directory,
@@ -355,7 +355,7 @@ if __name__ == "__main__":
     )
     os.makedirs(new_dir)
 
-    # collect demonstrations
+    # 收集演示
 
     remove_directory = []
     i = 0

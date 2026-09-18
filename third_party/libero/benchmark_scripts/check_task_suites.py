@@ -1,5 +1,5 @@
 """
-This script is to test if users can successfully load all the environments, the benchmark initial states in their machines
+此脚本用于测试用户是否能够成功加载所有环境和基准测试初始状态
 """
 import os
 from termcolor import colored
@@ -46,7 +46,7 @@ def main():
     datasets_default_path = get_libero_path("datasets")
     bddl_files_default_path = get_libero_path("bddl_files")
 
-    # Check all the files
+    # 检查所有文件
     task_tuples = []
     demo_files = []
     for benchmark_name in [
@@ -58,10 +58,10 @@ def main():
     ]:
         benchmark_instance = benchmark.get_benchmark_dict()[benchmark_name]()
         num_tasks = benchmark_instance.get_num_tasks()
-        # see how many tasks involved in the benchmark
+        # 查看基准测试中涉及多少个任务
         print(f"{num_tasks} tasks in the benchmark {benchmark_instance.name}: ")
 
-        # Check if all the task names and their bddl file names
+        # 检查所有任务名称及其bddl文件名
         task_names = benchmark_instance.get_task_names()
         print("The benchmark contains the following tasks:")
         for task_id in range(num_tasks):

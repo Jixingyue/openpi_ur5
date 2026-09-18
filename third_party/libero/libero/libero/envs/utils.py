@@ -11,26 +11,26 @@ from robosuite.utils.placement_samplers import ObjectPositionSampler
 
 class MultiRegionRandomSampler(ObjectPositionSampler):
     """
-    Places all objects within the table uniformly random.
-    Args:
-        name (str): Name of this sampler.
-        mujoco_objects (None or MujocoObject or list of MujocoObject): single model or list of MJCF object models
-        x_range (2-array of float): Specify the (min, max) relative x_range used to uniformly place objects
-        y_range (2-array of float): Specify the (min, max) relative y_range used to uniformly place objects
+    将所有物体在桌面内均匀随机放置。
+    参数:
+        name (str): 此采样器的名称。
+        mujoco_objects (None or MujocoObject or list of MujocoObject): 单个模型或MJCF对象模型列表
+        x_range (2-array of float): 指定用于均匀放置物体的(min, max)相对x范围
+        y_range (2-array of float): 指定用于均匀放置物体的(min, max)相对y范围
         rotation (None or float or Iterable):
-            :`None`: Add uniform random random rotation
-            :`Iterable (a,b)`: Uniformly randomize rotation angle between a and b (in radians)
-            :`value`: Add fixed angle rotation
-        rotation_axis (str): Can be 'x', 'y', or 'z'. Axis about which to apply the requested rotation
+            :`None`: 添加均匀随机旋转
+            :`Iterable (a,b)`: 在a和b之间均匀随机化旋转角度（弧度）
+            :`value`: 添加固定角度旋转
+        rotation_axis (str): 可以是'x'、'y'或'z'。应用请求旋转的轴
         ensure_object_boundary_in_range (bool):
-            :`True`: The center of object is at position:
+            :`True`: 物体中心位于:
                  [uniform(min x_range + radius, max x_range - radius)], [uniform(min x_range + radius, max x_range - radius)]
             :`False`:
                 [uniform(min x_range, max x_range)], [uniform(min x_range, max x_range)]
-        ensure_valid_placement (bool): If True, will check for correct (valid) object placements
-        reference_pos (3-array): global (x,y,z) position relative to which sampling will occur
-        z_offset (float): Add a small z-offset to placements. This is useful for fixed objects
-            that do not move (i.e. no free joint) to place them above the table.
+        ensure_valid_placement (bool): 如果为True，将检查正确（有效）的物体放置
+        reference_pos (3-array): 采样将相对于此全局(x,y,z)位置进行
+        z_offset (float): 为放置添加小的z偏移。这对于不移动的固定物体很有用
+            （即没有自由关节）以将它们放置在桌面上方。
     """
 
     def __init__(
@@ -66,11 +66,11 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_x(self, object_horizontal_radius):
         """
-        Samples the x location for a given object
-        Args:
-            object_horizontal_radius (float): Radius of the object currently being sampled for
-        Returns:
-            float: sampled x position
+        为给定物体采样x位置
+        参数:
+            object_horizontal_radius (float): 当前正在采样的物体的半径
+        返回:
+            float: 采样的x位置
         """
         minimum, maximum = self.x_ranges[self.idx]
         if self.ensure_object_boundary_in_range:
@@ -80,11 +80,11 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_y(self, object_horizontal_radius):
         """
-        Samples the y location for a given object
-        Args:
-            object_horizontal_radius (float): Radius of the object currently being sampled for
-        Returns:
-            float: sampled y position
+        为给定物体采样y位置
+        参数:
+            object_horizontal_radius (float): 当前正在采样的物体的半径
+        返回:
+            float: 采样的y位置
         """
         minimum, maximum = self.y_ranges[self.idx]
         if self.ensure_object_boundary_in_range:
@@ -94,11 +94,11 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_quat(self):
         """
-        Samples the orientation for a given object
-        Returns:
-            np.array: sampled (r,p,y) euler angle orientation
-        Raises:
-            ValueError: [Invalid rotation axis]
+        为给定物体采样方向
+        返回:
+            np.array: 采样的(r,p,y)欧拉角方向
+        异常:
+            ValueError: [无效的旋转轴]
         """
         if self.rotation is None:
             rot_angle = np.random.uniform(high=2 * np.pi, low=0)
@@ -109,7 +109,7 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
         else:
             rot_angle = self.rotation
 
-        # Return angle based on axis requested
+        # 根据请求的轴返回角度
         if self.rotation_axis == "x":
             return np.array([np.cos(rot_angle / 2), np.sin(rot_angle / 2), 0, 0])
         elif self.rotation_axis == "y":
@@ -117,7 +117,7 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
         elif self.rotation_axis == "z":
             return np.array([np.cos(rot_angle / 2), 0, 0, np.sin(rot_angle / 2)])
         else:
-            # Invalid axis specified, raise error
+            # 指定了无效的轴，抛出错误
             raise ValueError(
                 "Invalid rotation axis specified. Must be 'x', 'y', or 'z'. Got: {}".format(
                     self.rotation_axis
@@ -126,25 +126,24 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def sample(self, fixtures=None, reference=None, on_top=True):
         """
-        Uniformly sample relative to this sampler's reference_pos or @reference (if specified).
-        Args:
-            fixtures (dict): dictionary of current object placements in the scene as well as any other relevant
-                obstacles that should not be in contact with newly sampled objects. Used to make sure newly
-                generated placements are valid. Should be object names mapped to (pos, quat, MujocoObject)
-            reference (str or 3-tuple or None): if provided, sample relative placement. Can either be a string, which
-                corresponds to an existing object found in @fixtures, or a direct (x,y,z) value. If None, will sample
-                relative to this sampler's `'reference_pos'` value.
-            on_top (bool): if True, sample placement on top of the reference object. This corresponds to a sampled
-                z-offset of the current sampled object's bottom_offset + the reference object's top_offset
-                (if specified)
-        Return:
-            dict: dictionary of all object placements, mapping object_names to (pos, quat, obj), including the
-                placements specified in @fixtures. Note quat is in (w,x,y,z) form
-        Raises:
-            RandomizationError: [Cannot place all objects]
-            AssertionError: [Reference object name does not exist, invalid inputs]
+        相对于此采样器的reference_pos或@reference（如果指定）进行均匀采样。
+        参数:
+            fixtures (dict): 当前场景中物体放置的字典，以及不应与新采样物体接触的任何其他相关
+                障碍物。用于确保新生成的放置是有效的。应该是物体名称映射到(pos, quat, MujocoObject)
+            reference (str or 3-tuple or None): 如果提供，采样相对放置。可以是字符串，
+                对应@fixtures中找到的现有物体，或直接的(x,y,z)值。如果为None，将相对于
+                此采样器的`'reference_pos'`值进行采样。
+            on_top (bool): 如果为True，在参考物体顶部采样放置。这对应于当前采样的
+                物体的bottom_offset + 参考物体的top_offset的z偏移
+                （如果指定）
+        返回:
+            dict: 所有物体放置的字典，将object_names映射到(pos, quat, obj)，包括
+                @fixtures中指定的放置。注意quat为(w,x,y,z)格式
+        异常:
+            RandomizationError: [无法放置所有物体]
+            AssertionError: [参考物体名称不存在，无效输入]
         """
-        # Standardize inputs
+        # 标准化输入
         placed_objects = {} if fixtures is None else copy(fixtures)
         if reference is None:
             base_offset = self.reference_pos
@@ -166,9 +165,9 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
                 base_offset
             )
 
-        # Sample pos and quat for all objects assigned to this sampler
+        # 为分配给此采样器的所有物体采样位置和四元数
         for obj in self.mujoco_objects:
-            # First make sure the currently sampled object hasn't already been sampled
+            # 首先确保当前采样的物体尚未被采样
             assert (
                 obj.name not in placed_objects
             ), "Object '{}' has already been sampled!".format(obj.name)
@@ -184,7 +183,7 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
                 if on_top:
                     object_z -= bottom_offset[-1]
 
-                # objects cannot overlap
+                # 物体不能重叠
                 location_valid = True
                 if self.ensure_valid_placement:
                     for (x, y, z), _, other_obj in placed_objects.values():
@@ -198,14 +197,14 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
                             break
 
                 if location_valid:
-                    # random rotation
+                    # 随机旋转
                     quat = self._sample_quat()
 
-                    # multiply this quat by the object's initial rotation if it has the attribute specified
+                    # 如果物体具有指定的属性，将此四元数与物体的初始旋转相乘
                     if hasattr(obj, "init_quat"):
                         quat = quat_multiply(quat, obj.init_quat)
 
-                    # location is valid, put the object down
+                    # 位置有效，放下物体
                     pos = (object_x, object_y, object_z)
 
                     placed_objects[obj.name] = (pos, quat, obj)
@@ -220,20 +219,20 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
 def postprocess_model_xml(xml_str, cameras_dict={}, demo_generation=False):
     """
-    This function postprocesses the model.xml collected from a MuJoCo demonstration
-    in order to make sure that the STL files can be found.
+    此函数对从MuJoCo演示中收集的model.xml进行后处理，
+    以确保可以找到STL文件。
 
-    Args:
-        xml_str (str): Mujoco sim demonstration XML file as string
+    参数:
+        xml_str (str): Mujoco仿真演示XML文件字符串
 
-    Returns:
-        str: Post-processed xml file as string
+    返回:
+        str: 后处理的xml文件字符串
     """
 
     path = os.path.split(robosuite.__file__)[0]
     path_split = path.split("/")
 
-    # replace mesh and texture file paths
+    # 替换网格和纹理文件路径
     tree = ET.fromstring(xml_str)
     root = tree
     asset = root.find("asset")
@@ -241,7 +240,7 @@ def postprocess_model_xml(xml_str, cameras_dict={}, demo_generation=False):
     textures = asset.findall("texture")
     all_elements = meshes + textures
 
-    # also replace paths for libero
+    # 也替换libero的路径
     libero_path = os.getcwd() + "/libero"
     libero_path_split = libero_path.split("/")
 

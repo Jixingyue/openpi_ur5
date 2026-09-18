@@ -90,7 +90,7 @@ def LogicalState(func=None, state_type="PLACEHOLDER"):
         return wrapper
 
 
-# Region definition
+# 区域定义
 
 
 class RegionWrapper:
@@ -123,7 +123,7 @@ class Region:
         return strings
 
 
-# Objects
+# 对象
 class _ObjectDict:
     def __init__(self, func, object_type):
         self.func = func
@@ -226,7 +226,7 @@ def get_property_string(**kwargs):
 
 
 def get_prediate_string(predicates):
-    # Handle init case and goal case
+    # 处理 init 情况和 goal 情况
     assert type(predicates)
     strings = []
 
@@ -297,7 +297,7 @@ def object_naming_mapping(category_name, object_id):
 
 
 def retrieve_fixture_property(category_name):
-    """Retrieve fixture property"""
+    """检索固定装置属性"""
     property_dict = {}
     return property_dict
 
@@ -324,7 +324,7 @@ def get_xy_region_kwargs_list_from_regions_info(regions_info_dict):
 
 def get_object_dict(objects_num_info):
     """
-    A dctionary of objects that has "category_name": number_of_objects
+    一个形如 "category_name"：对象数量 的对象字典
     """
     object_dict = {}
     for category_name, num_objects in objects_num_info.items():

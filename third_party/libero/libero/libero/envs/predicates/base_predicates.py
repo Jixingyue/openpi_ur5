@@ -91,7 +91,7 @@ class Stack(BinaryAtomic):
 
 
 class PrintJointState(UnaryAtomic):
-    """This is a debug predicate to allow you print the joint values of the object you care"""
+    """这是一个调试谓词，允许您打印您关心的物体的关节值"""
 
     def __call__(self, arg):
         print(arg.get_joint_state())

@@ -11,7 +11,7 @@ from libero.lifelong.models.policy_head import *
 
 ###############################################################################
 #
-# A model handling extra input modalities besides images at time t.
+# 一个在时间 t 处理除图像之外的额外输入模态的模型。
 #
 ###############################################################################
 
@@ -27,7 +27,7 @@ class ExtraModalityTokens(nn.Module):
         extra_embedding_size=32,
     ):
         """
-        This is a class that maps all extra modality inputs into tokens of the same size
+        这是一个将所有额外模态输入映射为相同尺寸 token 的类
         """
         super().__init__()
         self.use_joint = use_joint
@@ -52,7 +52,7 @@ class ExtraModalityTokens(nn.Module):
         self.extra_encoders = {}
 
         def generate_proprio_mlp_fn(modality_name, extra_low_level_feature_dim):
-            assert extra_low_level_feature_dim > 0  # we indeed have extra information
+            assert extra_low_level_feature_dim > 0  # 我们确实拥有额外信息
             if extra_num_layers > 0:
                 layers = [nn.Linear(extra_low_level_feature_dim, extra_hidden_size)]
                 for i in range(1, extra_num_layers):
@@ -83,11 +83,11 @@ class ExtraModalityTokens(nn.Module):
     def forward(self, obs_dict):
         """
         obs_dict: {
-            (optional) joint_stats: (B, T, 7),
-            (optional) gripper_states: (B, T, 2),
-            (optional) ee: (B, T, 3)
+            （可选）joint_stats: (B, T, 7),
+            （可选）gripper_states: (B, T, 2),
+            （可选）ee: (B, T, 3)
         }
-        map above to a latent vector of shape (B, T, H)
+        将上述内容映射为形状为 (B, T, H) 的潜在向量
         """
         tensor_list = []
 
@@ -110,8 +110,8 @@ class ExtraModalityTokens(nn.Module):
 
 class PerturbationAttention:
     """
-    See https://arxiv.org/pdf/1711.00138.pdf for perturbation-based visualization
-    for understanding a control agent.
+    参见 https://arxiv.org/pdf/1711.00138.pdf 了解用于理解控制智能体的
+    基于扰动的可视化方法。
     """
 
     def __init__(self, model, image_size=[128, 128], patch_size=[16, 16], device="cpu"):
@@ -120,7 +120,7 @@ class PerturbationAttention:
         self.patch_size = patch_size
         H, W = image_size
         num_patches = (H * W) // np.prod(patch_size)
-        # pre-compute mask
+        # 预先计算掩码
         h, w = patch_size
         nh, nw = H // h, W // w
         mask = (
@@ -163,22 +163,22 @@ class PerturbationAttention:
 
 ###############################################################################
 #
-# A Transformer Policy
+# 一个 Transformer 策略
 #
 ###############################################################################
 
 
 class BCTransformerPolicy(BasePolicy):
     """
-    Input: (o_{t-H}, ... , o_t)
-    Output: a_t or distribution of a_t
+    输入：(o_{t-H}, ... , o_t)
+    输出：a_t 或 a_t 的分布
     """
 
     def __init__(self, cfg, shape_meta):
         super().__init__(cfg, shape_meta)
         policy_cfg = cfg.policy
 
-        ### 1. encode image
+        ### 1. 编码图像
         embed_size = policy_cfg.embed_size
         transformer_input_sizes = []
         self.image_encoders = {}
@@ -199,13 +199,13 @@ class BCTransformerPolicy(BasePolicy):
             [x["encoder"] for x in self.image_encoders.values()]
         )
 
-        ### 2. encode language
+        ### 2. 编码语言
         policy_cfg.language_encoder.network_kwargs.output_size = embed_size
         self.language_encoder = eval(policy_cfg.language_encoder.network)(
             **policy_cfg.language_encoder.network_kwargs
         )
 
-        ### 3. encode extra information (e.g. gripper, joint_state)
+        ### 3. 编码额外信息（例如夹爪、joint_state）
         self.extra_encoder = ExtraModalityTokens(
             use_joint=cfg.data.use_joint,
             use_gripper=cfg.data.use_gripper,
@@ -215,7 +215,7 @@ class BCTransformerPolicy(BasePolicy):
             extra_embedding_size=embed_size,
         )
 
-        ### 4. define temporal transformer
+        ### 4. 定义时序 transformer
         policy_cfg.temporal_position_encoding.network_kwargs.input_size = embed_size
         self.temporal_position_encoding_fn = eval(
             policy_cfg.temporal_position_encoding.network
@@ -254,10 +254,10 @@ class BCTransformerPolicy(BasePolicy):
         return x[:, :, 0]  # (B, T, E)
 
     def spatial_encode(self, data):
-        # 1. encode extra
+        # 1. 编码额外信息
         extra = self.extra_encoder(data["obs"])  # (B, T, num_extra, E)
 
-        # 2. encode language, treat it as action token
+        # 2. 编码语言，将其视为动作 token
         B, T = extra.shape[:2]
         text_encoded = self.language_encoder(data)  # (B, E)
         text_encoded = text_encoded.view(B, 1, 1, -1).expand(
@@ -265,7 +265,7 @@ class BCTransformerPolicy(BasePolicy):
         )  # (B, T, 1, E)
         encoded = [text_encoded, extra]
 
-        # 3. encode image
+        # 3. 编码图像
         for img_name in self.image_encoders.keys():
             x = data["obs"][img_name]
             B, T, C, H, W = x.shape

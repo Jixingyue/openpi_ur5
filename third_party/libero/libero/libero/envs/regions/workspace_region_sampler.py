@@ -34,12 +34,12 @@ class TableRegionSampler(MultiRegionRandomSampler):
 
     def _sample_quat(self):
         """
-        Samples the orientation for a given object
-        Add multiple rotation options
-        Returns:
-            np.array: sampled (r,p,y) euler angle orientation
-        Raises:
-            ValueError: [Invalid rotation axis]
+        为给定物体采样方向
+        添加多种旋转选项
+        返回:
+            np.array: 采样的(r,p,y)欧拉角方向
+        异常:
+            ValueError: [无效的旋转轴]
         """
         if self.rotation is None:
             rot_angle = np.random.uniform(high=2 * np.pi, low=0)
@@ -47,7 +47,7 @@ class TableRegionSampler(MultiRegionRandomSampler):
             rot_angle = np.random.uniform(
                 high=max(self.rotation), low=min(self.rotation)
             )
-        # multiple rotations
+        # 多种旋转
         elif isinstance(self.rotation, dict):
             quat = np.array(
                 [0.0, 0.0, 0.0, 1.0]
@@ -78,7 +78,7 @@ class TableRegionSampler(MultiRegionRandomSampler):
         else:
             rot_angle = self.rotation
 
-        # Return angle based on axis requested
+        # 根据请求的轴返回角度
         if self.rotation_axis == "x":
             return np.array([np.sin(rot_angle / 2), 0, 0, np.cos(rot_angle / 2)])
         elif self.rotation_axis == "y":
@@ -86,7 +86,7 @@ class TableRegionSampler(MultiRegionRandomSampler):
         elif self.rotation_axis == "z":
             return np.array([0, 0, np.sin(rot_angle / 2), np.cos(rot_angle / 2)])
         else:
-            # Invalid axis specified, raise error
+            # 指定了无效的轴，抛出错误
             raise ValueError(
                 "Invalid rotation axis specified. Must be 'x', 'y', or 'z'. Got: {}".format(
                     self.rotation_axis
@@ -124,12 +124,12 @@ class Libero100TableRegionSampler(MultiRegionRandomSampler):
 
     def _sample_quat(self):
         """
-        Samples the orientation for a given object
-        Add multiple rotation options
-        Returns:
-            np.array: sampled (r,p,y) euler angle orientation
-        Raises:
-            ValueError: [Invalid rotation axis]
+        为给定物体采样方向
+        添加多种旋转选项
+        返回:
+            np.array: 采样的(r,p,y)欧拉角方向
+        异常:
+            ValueError: [无效的旋转轴]
         """
         if self.rotation is None:
             rot_angle = np.random.uniform(high=2 * np.pi, low=0)
@@ -137,7 +137,7 @@ class Libero100TableRegionSampler(MultiRegionRandomSampler):
             rot_angle = np.random.uniform(
                 high=max(self.rotation), low=min(self.rotation)
             )
-        # multiple rotations
+        # 多种旋转
         elif isinstance(self.rotation, dict):
             quat = np.array(
                 [0.0, 0.0, 0.0, 1.0]
@@ -168,7 +168,7 @@ class Libero100TableRegionSampler(MultiRegionRandomSampler):
         else:
             rot_angle = self.rotation
 
-        # Return angle based on axis requested
+        # 根据请求的轴返回角度
         if self.rotation_axis == "x":
             return np.array([np.sin(rot_angle / 2), 0, 0, np.cos(rot_angle / 2)])
         elif self.rotation_axis == "y":
@@ -176,7 +176,7 @@ class Libero100TableRegionSampler(MultiRegionRandomSampler):
         elif self.rotation_axis == "z":
             return np.array([0, 0, np.sin(rot_angle / 2), np.cos(rot_angle / 2)])
         else:
-            # Invalid axis specified, raise error
+            # 指定了无效的轴，抛出错误
             raise ValueError(
                 "Invalid rotation axis specified. Must be 'x', 'y', or 'z'. Got: {}".format(
                     self.rotation_axis
@@ -214,12 +214,12 @@ class ObjectBasedSampler(MultiRegionRandomSampler):
 
     def _sample_quat(self):
         """
-        Samples the orientation for a given object
-        Add multiple rotation options
-        Returns:
-            np.array: sampled (r,p,y) euler angle orientation
-        Raises:
-            ValueError: [Invalid rotation axis]
+        为给定物体采样方向
+        添加多种旋转选项
+        返回:
+            np.array: 采样的(r,p,y)欧拉角方向
+        异常:
+            ValueError: [无效的旋转轴]
         """
         if self.rotation is None:
             rot_angle = np.random.uniform(high=2 * np.pi, low=0)
@@ -227,7 +227,7 @@ class ObjectBasedSampler(MultiRegionRandomSampler):
             rot_angle = np.random.uniform(
                 high=max(self.rotation), low=min(self.rotation)
             )
-        # multiple rotations
+        # 多种旋转
         elif isinstance(self.rotation, dict):
             quat = np.array(
                 [0.0, 0.0, 0.0, 1.0]
@@ -258,7 +258,7 @@ class ObjectBasedSampler(MultiRegionRandomSampler):
         else:
             rot_angle = self.rotation
 
-        # Return angle based on axis requested
+        # 根据请求的轴返回角度
         if self.rotation_axis == "x":
             return np.array([np.sin(rot_angle / 2), 0, 0, np.cos(rot_angle / 2)])
         elif self.rotation_axis == "y":
@@ -266,7 +266,7 @@ class ObjectBasedSampler(MultiRegionRandomSampler):
         elif self.rotation_axis == "z":
             return np.array([0, 0, np.sin(rot_angle / 2), np.cos(rot_angle / 2)])
         else:
-            # Invalid axis specified, raise error
+            # 指定了无效的轴，抛出错误
             raise ValueError(
                 "Invalid rotation axis specified. Must be 'x', 'y', or 'z'. Got: {}".format(
                     self.rotation_axis

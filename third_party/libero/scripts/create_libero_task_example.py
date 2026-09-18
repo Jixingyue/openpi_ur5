@@ -1,4 +1,4 @@
-"""This is a standalone file for create a task in libero."""
+"""这是一个用于在 libero 中创建任务的独立文件。"""
 import numpy as np
 
 from libero.libero.utils.bddl_generation_utils import (
@@ -75,7 +75,7 @@ class KitchenScene1(InitialSceneTemplates):
 
 
 def main():
-    # kitchen_scene_1
+    # kitchen_scene_1（厨房场景 1）
     scene_name = "kitchen_scene1"
     language = "Your Language 1"
     register_task_info(

@@ -11,7 +11,7 @@ from einops.layers.torch import Rearrange
 
 ###############################################################################
 #
-# Building blocks for transformers
+# transformer 的构建模块
 #
 ###############################################################################
 
@@ -34,7 +34,7 @@ class Attention(nn.Module):
         self.att_scale = head_output_size ** (-0.5)
         self.qkv = nn.Linear(dim, num_heads * head_output_size * 3, bias=False)
 
-        # We need to combine the output from all heads
+        # 我们需要合并来自所有注意力头的输出
         self.output_layer = nn.Sequential(
             nn.Linear(num_heads * head_output_size, dim), nn.Dropout(dropout)
         )
@@ -54,7 +54,7 @@ class Attention(nn.Module):
                 attn = attn.masked_fill(~mask[None, :, :, :], float("-inf"))
             elif (
                 len(mask.shape) == 3
-            ):  # Consider the case where each batch has different causal mask, typically useful for MAE implementation
+            ):  # 考虑每个批次拥有不同因果掩码的情况，通常对 MAE 实现有用
                 attn = attn.masked_fill(
                     ~mask[:, None, :, :].repeat(1, self.num_heads, 1, 1), float("-inf")
                 )
@@ -71,7 +71,7 @@ class Attention(nn.Module):
 class TransformerFeedForwardNN(nn.Module):
     def __init__(self, dim, hidden_dim, dropout=0.0):
         super().__init__()
-        # Remember the residual connection
+        # 记住残差连接
         layers = [
             nn.Linear(dim, hidden_dim),
             nn.GELU(),
@@ -88,19 +88,19 @@ class TransformerFeedForwardNN(nn.Module):
 def drop_path(
     x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True
 ):
-    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
-    This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
-    the original name is misleading as 'Drop Connect' is a different form of dropout in a separate paper...
-    See discussion: https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for
-    changing the layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use
-    'survival rate' as the argument.
+    """按样本丢弃路径（随机深度）（当应用于残差块的主路径时）。
+    这与我为 EfficientNet 等网络创建的 DropConnect 实现相同，不过，
+    原始名称具有误导性，因为 'Drop Connect' 在另一篇论文中是另一种形式的 dropout...
+    参见讨论：https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... 我已选择
+    将层和参数名称更改为 'drop path'，而不是将 DropConnect 作为层名并混用
+    'survival rate' 作为参数。
     """
     if drop_prob == 0.0 or not training:
         return x
     keep_prob = 1 - drop_prob
     shape = (x.shape[0],) + (1,) * (
         x.ndim - 1
-    )  # work with diff dim tensors, not just 2D ConvNets
+    )  # 适用于不同维度的张量，而不仅仅是 2D 卷积网络
     random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
     if keep_prob > 0.0 and scale_by_keep:
         random_tensor.div_(keep_prob)
@@ -108,7 +108,7 @@ def drop_path(
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
+    """按样本丢弃路径（随机深度）（当应用于残差块的主路径时）。"""
 
     def __init__(self, drop_prob=None, scale_by_keep=True):
         super(DropPath, self).__init__()
@@ -154,7 +154,7 @@ class SinusoidalPositionEncoding(nn.Module):
 
 ###############################################################################
 #
-# Transformer Decoder (we only use transformer decoder for our policies)
+# Transformer 解码器（我们的策略仅使用 transformer 解码器）
 #
 ###############################################################################
 
@@ -227,7 +227,7 @@ class TransformerDecoder(nn.Module):
                 x = x + drop_path(att(att_norm(x), mask))
             elif self.mask is not None:
                 x = x + drop_path(att(att_norm(x), self.mask))
-            else:  # no masking, just use full attention
+            else:  # 不进行掩码，仅使用完整注意力
                 x = x + drop_path(att(att_norm(x)))
 
             if not self.training:

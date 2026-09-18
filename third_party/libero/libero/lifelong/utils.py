@@ -129,7 +129,7 @@ def create_experiment_dir(cfg):
     if not os.path.exists(experiment_dir):
         os.makedirs(experiment_dir)
 
-    # look for the most recent run
+    # 查找最近一次运行
     experiment_id = 0
     for path in Path(experiment_dir).glob("run_*"):
         if not path.is_dir():
@@ -153,8 +153,8 @@ def get_task_embs(cfg, descriptions):
     logging.set_verbosity_error()
 
     if cfg.task_embedding_format == "one-hot":
-        # offset defaults to 1, if we have pretrained another model, this offset
-        # starts from the pretrained number of tasks + 1
+        # offset 默认为 1，如果我们已经预训练了另一个模型，这个 offset
+        # 从预训练的任务数量 + 1 开始
         offset = cfg.task_embedding_one_hot_offset
         descriptions = [f"Task {i+offset}" for i in range(len(descriptions))]
 
@@ -166,12 +166,12 @@ def get_task_embs(cfg, descriptions):
             "bert-base-cased", cache_dir=to_absolute_path("./bert")
         )
         tokens = tz(
-            text=descriptions,  # the sentence to be encoded
-            add_special_tokens=True,  # Add [CLS] and [SEP]
-            max_length=cfg.data.max_word_len,  # maximum length of a sentence
+            text=descriptions,  # 待编码的句子
+            add_special_tokens=True,  # 添加 [CLS] 和 [SEP]
+            max_length=cfg.data.max_word_len,  # 句子的最大长度
             padding="max_length",
-            return_attention_mask=True,  # Generate the attention mask
-            return_tensors="pt",  # ask the function to return PyTorch tensors
+            return_attention_mask=True,  # 生成注意力掩码
+            return_tensors="pt",  # 要求该函数返回 PyTorch 张量
         )
         masks = tokens["attention_mask"]
         input_ids = tokens["input_ids"]
@@ -183,24 +183,24 @@ def get_task_embs(cfg, descriptions):
         tz.pad_token = tz.eos_token
         model = AutoModel.from_pretrained("gpt2")
         tokens = tz(
-            text=descriptions,  # the sentence to be encoded
-            add_special_tokens=True,  # Add [CLS] and [SEP]
-            max_length=cfg.data.max_word_len,  # maximum length of a sentence
+            text=descriptions,  # 待编码的句子
+            add_special_tokens=True,  # 添加 [CLS] 和 [SEP]
+            max_length=cfg.data.max_word_len,  # 句子的最大长度
             padding="max_length",
-            return_attention_mask=True,  # Generate the attention mask
-            return_tensors="pt",  # ask the function to return PyTorch tensors
+            return_attention_mask=True,  # 生成注意力掩码
+            return_tensors="pt",  # 要求该函数返回 PyTorch 张量
         )
         task_embs = model(**tokens)["last_hidden_state"].detach()[:, -1]
     elif cfg.task_embedding_format == "clip":
         tz = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
         model = AutoModel.from_pretrained("openai/clip-vit-base-patch32")
         tokens = tz(
-            text=descriptions,  # the sentence to be encoded
-            add_special_tokens=True,  # Add [CLS] and [SEP]
-            max_length=cfg.data.max_word_len,  # maximum length of a sentence
+            text=descriptions,  # 待编码的句子
+            add_special_tokens=True,  # 添加 [CLS] 和 [SEP]
+            max_length=cfg.data.max_word_len,  # 句子的最大长度
             padding="max_length",
-            return_attention_mask=True,  # Generate the attention mask
-            return_tensors="pt",  # ask the function to return PyTorch tensors
+            return_attention_mask=True,  # 生成注意力掩码
+            return_tensors="pt",  # 要求该函数返回 PyTorch 张量
         )
         task_embs = model.get_text_features(**tokens).detach()
     elif cfg.task_embedding_format == "roberta":
@@ -208,12 +208,12 @@ def get_task_embs(cfg, descriptions):
         tz.pad_token = tz.eos_token
         model = AutoModel.from_pretrained("roberta-base")
         tokens = tz(
-            text=descriptions,  # the sentence to be encoded
-            add_special_tokens=True,  # Add [CLS] and [SEP]
-            max_length=cfg.data.max_word_len,  # maximum length of a sentence
+            text=descriptions,  # 待编码的句子
+            add_special_tokens=True,  # 添加 [CLS] 和 [SEP]
+            max_length=cfg.data.max_word_len,  # 句子的最大长度
             padding="max_length",
-            return_attention_mask=True,  # Generate the attention mask
-            return_tensors="pt",  # ask the function to return PyTorch tensors
+            return_attention_mask=True,  # 生成注意力掩码
+            return_tensors="pt",  # 要求该函数返回 PyTorch 张量
         )
         task_embs = model(**tokens)["pooler_output"].detach()
     cfg.policy.language_encoder.network_kwargs.input_size = task_embs.shape[-1]

@@ -105,7 +105,7 @@ class WineBottle(TurbosquidObjects):
 
 @register_object
 class DiningSetGroup(TurbosquidObjects):
-    """This dining set group is mostly for visualization"""
+    """这个餐桌套装组主要用于可视化"""
 
     def __init__(
         self,

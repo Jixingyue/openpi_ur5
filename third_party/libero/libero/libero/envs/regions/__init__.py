@@ -4,11 +4,11 @@ from .object_property_sampler import *
 
 """
 
-Define different regions for different problem domains.
+为不同的问题域定义不同的区域。
 
-Naming convention for registering region smapler:
-key: lower-case naming, each word separated by hyphens
-value: lower-case naming, {problem_name}.{region_sampler_class_name}
+注册区域采样器的命名规范：
+key: 小写命名，每个单词用连字符分隔
+value: 小写命名，{problem_name}.{region_sampler_class_name}
 
 """
 REGION_SAMPLERS = {
@@ -29,7 +29,7 @@ def update_region_samplers(
     problem_name, region_sampler_name, region_sampler_class_name
 ):
     """
-    This is for registering customized region samplers without adding to / modifying original codebase.
+    这是用于注册自定义区域采样器的，无需添加/修改原始代码库。
     """
     if problem_name not in REGION_SAMPLERS:
         REGION_SAMPLERS[problem_name] = {}

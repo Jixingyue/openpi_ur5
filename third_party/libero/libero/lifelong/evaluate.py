@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 
-# TODO: find a better way for this?
+# TODO: 是否有更好的方式来实现这个？
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import hydra
 import json
@@ -72,7 +72,7 @@ policy_map = {
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluation Script")
     parser.add_argument("--experiment_dir", type=str, default="experiments")
-    # for which task suite
+    # 针对哪个任务套件
     parser.add_argument(
         "--benchmark",
         type=str,
@@ -80,7 +80,7 @@ def parse_args():
         choices=["libero_10", "libero_spatial", "libero_object", "libero_goal"],
     )
     parser.add_argument("--task_id", type=int, required=True)
-    # method detail
+    # 方法详情
     parser.add_argument(
         "--algo",
         type=str,
@@ -116,7 +116,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    # e.g., experiments/LIBERO_SPATIAL/Multitask/BCRNNPolicy_seed100/
+    # 例如，experiments/LIBERO_SPATIAL/Multitask/BCRNNPolicy_seed100/
 
     experiment_dir = os.path.join(
         args.experiment_dir,
@@ -125,7 +125,7 @@ def main():
         + f"{policy_map[args.policy]}_seed{args.seed}",
     )
 
-    # find the checkpoint
+    # 查找检查点
     experiment_id = 0
     for path in Path(experiment_dir).glob("run_*"):
         if not path.is_dir():
@@ -172,7 +172,7 @@ def main():
                 mask = algo.previous_masks[module_idx].to(cfg.device)
                 weight[mask.eq(0)] = 0.0
                 weight[mask.gt(args.task_id + 1)] = 0.0
-                # we never train norm layers
+                # 我们从不训练归一化层
             if "BatchNorm" in str(type(module)) or "LayerNorm" in str(type(module)):
                 module.eval()
 
@@ -181,7 +181,7 @@ def main():
     if not hasattr(cfg.data, "task_order_index"):
         cfg.data.task_order_index = 0
 
-    # get the benchmark the task belongs to
+    # 获取该任务所属的基准测试
     benchmark = get_benchmark(cfg.benchmark_name)(cfg.data.task_order_index)
     descriptions = [benchmark.get_task(i).language for i in range(10)]
     task_embs = get_task_embs(cfg, descriptions)
@@ -189,9 +189,9 @@ def main():
 
     task = benchmark.get_task(args.task_id)
 
-    ### ======================= start evaluation ============================
+    ### ======================= 开始评估 ============================
 
-    # 1. evaluate dataset loss
+    # 1. 评估数据集损失
     try:
         dataset, shape_meta = get_dataset(
             dataset_path=os.path.join(
@@ -214,7 +214,7 @@ def main():
 
     test_loss = 0.0
 
-    # 2. evaluate success rate
+    # 2. 评估成功率
     if args.algo == "multitask":
         save_folder = os.path.join(
             args.save_dir,
@@ -261,7 +261,7 @@ def main():
         task_emb = benchmark.get_task_emb(args.task_id)
 
         num_success = 0
-        for _ in range(5):  # simulate the physics without any actions
+        for _ in range(5):  # 在没有任何动作的情况下模拟物理过程
             env.step(np.zeros((env_num, 7)))
 
         with torch.no_grad():
@@ -275,7 +275,7 @@ def main():
                     obs, dones, camera_name="agentview_image"
                 )
 
-                # check whether succeed
+                # 检查是否成功
                 for k in range(env_num):
                     dones[k] = dones[k] or done[k]
                 if all(dones):

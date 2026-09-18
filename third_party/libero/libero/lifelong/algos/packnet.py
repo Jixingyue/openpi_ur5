@@ -13,7 +13,7 @@ from libero.lifelong.utils import *
 
 class PackNet(Sequential):
     """
-    The PackNet policy.
+    PackNet 策略。
     """
 
     def __init__(self, n_tasks, cfg, **policy_kwargs):
@@ -30,25 +30,25 @@ class PackNet(Sequential):
 
     def pruning_mask(self, weights, previous_mask, layer_idx):
         """
-        Ranks weights by magnitude. Sets all below kth to 0.
-        Returns pruned mask.
+        按幅值对权重进行排序。将低于第 k 个的全部置为 0。
+        返回剪枝后的掩码。
         """
-        # Select all prunable weights, ie. belonging to current dataset.
+        # 选择所有可剪枝的权重，即属于当前数据集的权重。
         previous_mask = previous_mask.to(self.cfg.device)
         tensor = weights[
             previous_mask.eq(self.current_task + 1)
-        ]  # current_task starts from 0, so we add 1
+        ]  # current_task 从 0 开始，因此我们加 1
         abs_tensor = tensor.abs()
         cutoff_rank = round(self.cfg.lifelong.prune_perc * tensor.numel())
         cutoff_value = abs_tensor.view(-1).cpu().kthvalue(cutoff_rank)[0]
 
-        # Remove those weights which are below cutoff and belong to current
-        # dataset that we are training for.
+        # 移除那些低于 cutoff 且属于我们正在训练的
+        # 当前数据集的权重。
         remove_mask = weights.abs().le(cutoff_value) * previous_mask.eq(
             self.current_task + 1
         )
 
-        # mask is 1 - remove_mask
+        # mask 为 1 - remove_mask
         previous_mask[remove_mask.eq(1)] = 0
         mask = previous_mask
         print(
@@ -65,8 +65,8 @@ class PackNet(Sequential):
 
     def prune(self):
         """
-        Gets pruning mask for each layer, based on previous_masks.
-        Sets the self.current_masks to the computed pruning masks.
+        基于 previous_masks 获取每一层的剪枝掩码。
+        将 self.current_masks 设置为计算得到的剪枝掩码。
         """
         self.current_masks = {}
         print(
@@ -81,14 +81,14 @@ class PackNet(Sequential):
                 )
                 self.current_masks[module_idx] = mask.to(self.cfg.device)
 
-                # Set pruned weights to 0.
+                # 将剪枝掉的权重置为 0。
                 weight = module.weight.data
                 weight[self.current_masks[module_idx].eq(0)] = 0.0
         self.previous_masks = self.current_masks
 
     def make_grads_zero(self):
         """
-        Sets grads of fixed weights and Norm layers to 0.
+        将固定权重和 Norm 层的梯度置为 0。
         """
         assert self.current_masks
 
@@ -96,36 +96,36 @@ class PackNet(Sequential):
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
                 layer_mask = self.current_masks[module_idx]
 
-                # Set grads of all weights not belonging to current dataset to 0.
+                # 将所有不属于当前数据集的权重的梯度置为 0。
                 if module.weight.grad is not None:
                     module.weight.grad.data[layer_mask.ne(self.current_task + 1)] = 0
-                    # Biases are fixed.
+                    # 偏置是固定的。
                     if module.bias is not None:
                         module.bias.grad.data.fill_(0)
             elif "BatchNorm" in str(type(module)) or "LayerNorm" in str(type(module)):
-                # Set grads of batchnorm params to 0.
+                # 将 batchnorm 参数的梯度置为 0。
                 module.weight.grad.data.fill_(0)
                 module.bias.grad.data.fill_(0)
 
     def start_task(self, task):
         """
-        Turns previously pruned weights into trainable weights for current dataset.
+        将之前剪枝掉的权重变为当前数据集的可训练权重。
         """
         super().start_task(task)
         assert self.previous_masks
         for module_idx, module in enumerate(self.policy.modules()):
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
                 mask = self.previous_masks[module_idx]
-                # since current_task starts from 0, we add 1
+                # 由于 current_task 从 0 开始，我们加 1
                 mask[mask.eq(0)] = self.current_task + 1
-            # we never train norm layers
+            # 我们从不训练 norm 层
             elif "BatchNorm" in str(type(module)) or "LayerNorm" in str(type(module)):
                 module.eval()
 
         self.current_masks = self.previous_masks
 
     def observe(self, data):
-        # make norm layer to eval
+        # 将 norm 层设为 eval
         for module_idx, module in enumerate(self.policy.modules()):
             if "BatchNorm" in str(type(module)) or "LayerNorm" in str(type(module)):
                 module.eval()
@@ -139,23 +139,23 @@ class PackNet(Sequential):
                 self.policy.parameters(), self.cfg.train.grad_clip
             )
 
-        # Set fixed param grads to 0.
+        # 将固定参数的梯度置为 0。
         self.make_grads_zero()
         self.optimizer.step()
         return loss.item()
 
     def end_task(self, dataset, task_id, benchmark):
         # prune + post_finetune
-        # for fair comparisons with other lifelong learning algorithms,
-        # we do not use the success rates in the post_finetune epochs to AUC
+        # 为了与其他终身学习算法进行公平比较，
+        # 我们不将 post_finetune 各个 epoch 中的成功率用于 AUC
         self.prune()
 
-        # Do final finetuning to improve results on pruned network.
+        # 进行最后的微调，以改善剪枝后网络上的结果。
         if self.cfg.lifelong.post_prune_epochs:
             print("[info] start finetuning after pruning ...")
-            # Note: here we do not apply start_task() to keep the 0 value in the
-            # mask stay 0 and only update the param where mask=current_task+1
-            # re-initialize the optimizer and scheduler
+            # 注意：这里我们不应用 start_task()，以保持掩码中的 0 值
+            # 保持为 0，并且只更新 mask=current_task+1 的参数
+            # 重新初始化优化器和调度器
             self.optimizer = eval(self.cfg.train.optimizer.name)(
                 self.policy.parameters(), **self.cfg.train.optimizer.kwargs
             )
@@ -180,7 +180,7 @@ class PackNet(Sequential):
             )
 
             prev_success_rate = -1.0
-            best_state_dict = self.policy.state_dict()  # currently save the best model
+            best_state_dict = self.policy.state_dict()  # 目前保存最佳模型
             torch_save_model(
                 self.policy,
                 model_checkpoint_name,
@@ -188,7 +188,7 @@ class PackNet(Sequential):
                 previous_masks=self.previous_masks,
             )
 
-            # this is just a fake summary object that works for placeholders
+            # 这只是一个用于占位符的假的汇总对象
             sim_states = [[] for _ in range(self.cfg.eval.n_eval)]
             for epoch in range(0, self.cfg.lifelong.post_prune_epochs + 1):
                 t0 = time.time()
@@ -205,7 +205,7 @@ class PackNet(Sequential):
                 )
                 time.sleep(0.1)
 
-                if epoch % self.cfg.lifelong.post_eval_every == 0:  # evaluate BC loss
+                if epoch % self.cfg.lifelong.post_eval_every == 0:  # 评估 BC 损失
                     self.policy.eval()
 
                     t0 = time.time()
@@ -224,7 +224,7 @@ class PackNet(Sequential):
                     )
 
                     if prev_success_rate < success_rate:
-                        # we do not record the success rate
+                        # 我们不记录成功率
                         torch_save_model(
                             self.policy,
                             model_checkpoint_name,
@@ -248,8 +248,8 @@ class PackNet(Sequential):
             self.policy.load_state_dict(torch_load_model(model_checkpoint_name)[0])
 
     def get_eval_algo(self, task_id):
-        # TODO: find a better way to do this
-        # save and load a new model and set all params where mask > current_task + 1 to 0
+        # TODO：找到一种更好的方法来做这件事
+        # 保存并加载一个新模型，并将所有 mask > current_task + 1 的参数置为 0
         torch_save_model(
             self.policy,
             os.path.join(self.experiment_dir, "tmp_model.pth"),
@@ -282,7 +282,7 @@ class PackNet(Sequential):
                 mask = eval_algo.previous_masks[module_idx].to(self.cfg.device)
                 weight[mask.eq(0)] = 0.0
                 weight[mask.gt(task_id + 1)] = 0.0
-            # we never train norm layers
+            # 我们从不训练 norm 层
             elif "BatchNorm" in str(type(module)) or "LayerNorm" in str(type(module)):
                 module.eval()
         return eval_algo

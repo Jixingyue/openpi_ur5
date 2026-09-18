@@ -11,16 +11,16 @@ from robosuite.models.objects import MujocoObject
 
 class ObjectPropertySampler:
     """
-    Base class of object placement sampler.
-    Args:
-        name (str): Name of this sampler.
-        mujoco_objects (None or MujocoObject or list of MujocoObject): single model or list of MJCF object models
-        ensure_object_boundary_in_range (bool): If True, will ensure that the object is enclosed within a given boundary
-            (should be implemented by subclass)
-        ensure_valid_placement (bool): If True, will check for correct (valid) object placements
-        reference_pos (3-array): global (x,y,z) position relative to which sampling will occur
-        z_offset (float): Add a small z-offset to placements. This is useful for fixed objects
-            that do not move (i.e. no free joint) to place them above the table.
+    物体放置采样器的基类。
+    参数:
+        name (str): 此采样器的名称。
+        mujoco_objects (None or MujocoObject or list of MujocoObject): 单个模型或MJCF对象模型列表
+        ensure_object_boundary_in_range (bool): 如果为True，将确保物体在给定边界内
+            （应由子类实现）
+        ensure_valid_placement (bool): 如果为True，将检查正确（有效）的物体放置
+        reference_pos (3-array): 采样将相对于此全局(x,y,z)位置进行
+        z_offset (float): 为放置添加小的z偏移。这对于不移动的固定物体很有用
+            （即没有自由关节）以将它们放置在桌面上方。
     """
 
     def __init__(
@@ -28,12 +28,12 @@ class ObjectPropertySampler:
         name,
         mujoco_objects=None,
     ):
-        # Setup attributes
+        # 设置属性
         self.name = name
         if mujoco_objects is None:
             self.mujoco_objects = []
         else:
-            # Shallow copy the list so we don't modify the inputted list but still keep the object references
+            # 浅拷贝列表，这样我们不会修改输入的列表但仍然保留对象引用
             self.mujoco_objects = (
                 [mujoco_objects]
                 if isinstance(mujoco_objects, MujocoObject)
@@ -42,9 +42,9 @@ class ObjectPropertySampler:
 
     def add_objects(self, mujoco_objects):
         """
-        Add additional objects to this sampler. Checks to make sure there's no identical objects already stored.
-        Args:
-            mujoco_objects (MujocoObject or list of MujocoObject): single model or list of MJCF object models
+        向此采样器添加额外物体。检查确保没有已存储的相同物体。
+        参数:
+            mujoco_objects (MujocoObject or list of MujocoObject): 单个模型或MJCF对象模型列表
         """
         mujoco_objects = (
             [mujoco_objects]
@@ -59,24 +59,23 @@ class ObjectPropertySampler:
 
     def reset(self):
         """
-        Resets this sampler. Removes all mujoco objects from this sampler.
+        重置此采样器。从此采样器中移除所有mujoco物体。
         """
         self.mujoco_objects = []
 
     def sample(self, predicate_name=None):
         """
-        Uniformly sample on a surface (not necessarily table surface).
-        Args:
-            fixtures (dict): dictionary of current object placements in the scene as well as any other relevant
-                obstacles that should not be in contact with newly sampled objects. Used to make sure newly
-                generated placements are valid. Should be object names mapped to (pos, quat, MujocoObject)
-            reference (str or 3-tuple or None): if provided, sample relative placement. Can either be a string, which
-                corresponds to an existing object found in @fixtures, or a direct (x,y,z) value. If None, will sample
-                relative to this sampler's `'reference_pos'` value.
-            on_top (bool): if True, sample placement on top of the reference object.
-        Return:
-            dict: dictionary of all object placements, mapping object_names to (pos, quat, obj), including the
-                placements specified in @fixtures. Note quat is in (w,x,y,z) form
+        在表面上均匀采样（不一定是桌面）。
+        参数:
+            fixtures (dict): 当前场景中物体放置的字典，以及不应与新采样物体接触的任何其他相关
+                障碍物。用于确保新生成的放置是有效的。应该是物体名称映射到(pos, quat, MujocoObject)
+            reference (str or 3-tuple or None): 如果提供，采样相对放置。可以是字符串，
+                对应@fixtures中找到的现有物体，或直接的(x,y,z)值。如果为None，将相对于
+                此采样器的`'reference_pos'`值进行采样。
+            on_top (bool): 如果为True，在参考物体顶部采样放置。
+        返回:
+            dict: 所有物体放置的字典，将object_names映射到(pos, quat, obj)，包括
+                @fixtures中指定的放置。注意quat为(w,x,y,z)格式
         """
         raise NotImplementedError
 

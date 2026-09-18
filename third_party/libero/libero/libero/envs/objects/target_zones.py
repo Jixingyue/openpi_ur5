@@ -57,13 +57,12 @@ class TargetZone(SiteObject):
 
     def in_box(self, this_position, this_mat, other_position):
         """
-        Checks whether the object is contained within this SiteObject.
-        Useful for when the CompositeObject has holes and the object should
-        be within one of the holes. Makes an approximation by treating the
-        object as a point, and the SiteObject as an axis-aligned grid.
-        Args:
-            this_position: 3D position of this SiteObject
-            other_position: 3D position of object to test for insertion
+        检查物体是否包含在此SiteObject内。
+        当CompositeObject有孔且物体应在其中一个孔内时很有用。
+        通过将物体视为点，将SiteObject视为轴对齐网格来进行近似。
+        参数:
+            this_position: 此SiteObject的3D位置
+            other_position: 要测试插入的物体的3D位置
         """
 
         total_size = np.abs(this_mat @ self.size)
@@ -76,17 +75,16 @@ class TargetZone(SiteObject):
 
     def on_top(self, this_position, this_mat, other_position):
         """
-        Checks whether the object is contained within this SiteObject.
-        Useful for when the CompositeObject has holes and the object should
-        be within one of the holes. Makes an approximation by treating the
-        object as a point, and the SiteObject as an axis-aligned grid.
-        Args:
-            this_position: 3D position of this SiteObject
-            other_position: 3D position of object to test for insertion
+        检查物体是否包含在此SiteObject内。
+        当CompositeObject有孔且物体应在其中一个孔内时很有用。
+        通过将物体视为点，将SiteObject视为轴对齐网格来进行近似。
+        参数:
+            this_position: 此SiteObject的3D位置
+            other_position: 要测试插入的物体的3D位置
         """
 
-        # (TODO) Yifeng: The transformation for size is a little bit
-        # hacky at the moment. Will dig deeper into it.
+        # (TODO) Yifeng: 尺寸的变换目前有点
+        # 简陋。将会深入研究。
         total_size = np.abs(this_mat @ self.size)
         ub = this_position + total_size
         return np.all(other_position > ub)

@@ -16,7 +16,7 @@ REGISTERED_ALGOS = {}
 
 
 def register_algo(policy_class):
-    """Register a policy class with the registry."""
+    """将一个策略类注册到注册表中。"""
     policy_name = policy_class.__name__.lower()
     if policy_name in REGISTERED_ALGOS:
         raise ValueError("Cannot register duplicate policy ({})".format(policy_name))
@@ -25,7 +25,7 @@ def register_algo(policy_class):
 
 
 def get_algo_class(algo_name):
-    """Get the policy class from the registry."""
+    """从注册表中获取策略类。"""
     if algo_name.lower() not in REGISTERED_ALGOS:
         raise ValueError(
             "Policy class with name {} not found in registry".format(algo_name)
@@ -38,12 +38,12 @@ def get_algo_list():
 
 
 class AlgoMeta(type):
-    """Metaclass for registering environments"""
+    """用于注册环境的元类"""
 
     def __new__(meta, name, bases, class_dict):
         cls = super().__new__(meta, name, bases, class_dict)
 
-        # List all algorithms that should not be registered here.
+        # 列出所有不应在此处注册的算法。
         _unregistered_algos = []
 
         if cls.__name__ not in _unregistered_algos:
@@ -53,8 +53,8 @@ class AlgoMeta(type):
 
 class Sequential(nn.Module, metaclass=AlgoMeta):
     """
-    The sequential finetuning BC baseline, also the superclass of all lifelong
-    learning algorithms.
+    序贯微调 BC 基线，也是所有终身学习算法的
+    超类。
     """
 
     def __init__(self, n_tasks, cfg):
@@ -75,17 +75,17 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
 
     def end_task(self, dataset, task_id, benchmark, env=None):
         """
-        What the algorithm does at the end of learning each lifelong task.
+        算法在学习每个终身任务结束时所做的事情。
         """
         pass
 
     def start_task(self, task):
         """
-        What the algorithm does at the beginning of learning each lifelong task.
+        算法在学习每个终身任务开始时所做的事情。
         """
         self.current_task = task
 
-        # initialize the optimizer and scheduler
+        # 初始化优化器和调度器
         self.optimizer = eval(self.cfg.train.optimizer.name)(
             self.policy.parameters(), **self.cfg.train.optimizer.kwargs
         )
@@ -99,14 +99,14 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
             )
 
     def map_tensor_to_device(self, data):
-        """Move data to the device specified by self.cfg.device."""
+        """将数据移动到由 self.cfg.device 指定的设备上。"""
         return TensorUtils.map_tensor(
             data, lambda x: safe_device(x, device=self.cfg.device)
         )
 
     def observe(self, data):
         """
-        How the algorithm learns on each data point.
+        算法如何在每个数据点上进行学习。
         """
         data = self.map_tensor_to_device(data)
         self.optimizer.zero_grad()
@@ -129,7 +129,7 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
 
         self.start_task(task_id)
 
-        # recover the corresponding manipulation task ids
+        # 恢复对应的操作任务 id
         gsz = self.cfg.data.task_group_size
         manip_task_ids = list(range(task_id * gsz, (task_id + 1) * gsz))
 
@@ -146,10 +146,10 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
         )
 
         prev_success_rate = -1.0
-        best_state_dict = self.policy.state_dict()  # currently save the best model
+        best_state_dict = self.policy.state_dict()  # 目前保存最佳模型
 
-        # for evaluate how fast the agent learns on current task, this corresponds
-        # to the area under success rate curve on the new task.
+        # 用于评估智能体在当前任务上学习的速度，这对应于
+        # 新任务上成功率曲线下的面积。
         cumulated_counter = 0.0
         idx_at_best_succ = 0
         successes = []
@@ -158,19 +158,19 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
         task = benchmark.get_task(task_id)
         task_emb = benchmark.get_task_emb(task_id)
 
-        # start training
+        # 开始训练
         for epoch in range(0, self.cfg.train.n_epochs + 1):
 
             t0 = time.time()
 
-            if epoch > 0:  # update
+            if epoch > 0:  # 更新
                 self.policy.train()
                 training_loss = 0.0
                 for (idx, data) in enumerate(train_dataloader):
                     loss = self.observe(data)
                     training_loss += loss
                 training_loss /= len(train_dataloader)
-            else:  # just evaluate the zero-shot performance on 0-th epoch
+            else:  # 仅在第 0 个 epoch 评估零样本（zero-shot）性能
                 training_loss = 0.0
                 for (idx, data) in enumerate(train_dataloader):
                     loss = self.eval_observe(data)
@@ -182,13 +182,13 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
                 f"[info] Epoch: {epoch:3d} | train loss: {training_loss:5.2f} | time: {(t1-t0)/60:4.2f}"
             )
 
-            if epoch % self.cfg.eval.eval_every == 0:  # evaluate BC loss
-                # every eval_every epoch, we evaluate the agent on the current task,
-                # then we pick the best performant agent on the current task as
-                # if it stops learning after that specific epoch. So the stopping
-                # criterion for learning a new task is achieving the peak performance
-                # on the new task. Future work can explore how to decide this stopping
-                # epoch by also considering the agent's performance on old tasks.
+            if epoch % self.cfg.eval.eval_every == 0:  # 评估 BC 损失
+                # 每隔 eval_every 个 epoch，我们在当前任务上评估智能体，
+                # 然后我们选择在当前任务上表现最佳的智能体，
+                # 就好像它在那个特定 epoch 之后停止学习一样。因此学习
+                # 新任务的停止准则是在新任务上达到峰值性能。
+                # 未来的工作可以探索如何通过同时考虑智能体在旧任务上的
+                # 性能来决定这个停止 epoch。
                 losses.append(training_loss)
 
                 t0 = time.time()
@@ -228,13 +228,13 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
             if self.scheduler is not None and epoch > 0:
                 self.scheduler.step()
 
-        # load the best performance agent on the current task
+        # 加载在当前任务上表现最佳的智能体
         self.policy.load_state_dict(torch_load_model(model_checkpoint_name)[0])
 
-        # end learning the current task, some algorithms need post-processing
+        # 结束学习当前任务，一些算法需要后处理
         self.end_task(dataset, task_id, benchmark)
 
-        # return the metrics regarding forward transfer
+        # 返回关于前向迁移（forward transfer）的指标
         losses = np.array(losses)
         successes = np.array(successes)
         auc_checkpoint_name = os.path.join(
@@ -248,7 +248,7 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
             auc_checkpoint_name,
         )
 
-        # pretend that the agent stops learning once it reaches the peak performance
+        # 假设智能体一旦达到峰值性能就停止学习
         losses[idx_at_best_succ:] = losses[idx_at_best_succ]
         successes[idx_at_best_succ:] = successes[idx_at_best_succ]
         return successes.sum() / cumulated_counter, losses.sum() / cumulated_counter

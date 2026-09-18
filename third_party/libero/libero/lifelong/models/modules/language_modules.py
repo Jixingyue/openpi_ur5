@@ -1,12 +1,12 @@
 """
-This file contains modules that encode language task embeddings.
+该文件包含对语言任务嵌入进行编码的模块。
 """
 import torch.nn as nn
 
 
 class IdentityEncoder(nn.Module):
     """
-    Dummy encoder that directly outputs the pretrained task embedding
+    直接输出预训练任务嵌入的虚拟编码器
     """
 
     def __init__(self, dummy=True):
@@ -14,7 +14,7 @@ class IdentityEncoder(nn.Module):
 
     def forward(self, data):
         """
-        data:
+        数据:
             task_emb: (B, E)
         """
         h = data["task_emb"]  # (B, L, H)
@@ -23,11 +23,11 @@ class IdentityEncoder(nn.Module):
 
 class MLPEncoder(nn.Module):
     """
-    Encode task embedding
+    对任务嵌入进行编码
 
-    h = f(e), where
-        e: pretrained task embedding from large model
-        h: latent embedding (B, H)
+    h = f(e)，其中
+        e：来自大模型的预训练任务嵌入
+        h：潜在嵌入 (B, H)
     """
 
     def __init__(self, input_size, hidden_size, output_size, num_layers):
@@ -43,7 +43,7 @@ class MLPEncoder(nn.Module):
 
     def forward(self, data):
         """
-        data:
+        数据:
             task_emb: (B, E)
         """
         h = self.projection(data["task_emb"])  # (B, H)

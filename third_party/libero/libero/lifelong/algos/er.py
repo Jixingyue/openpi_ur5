@@ -34,13 +34,13 @@ def merge_datas(x, y):
 
 class ER(Sequential):
     """
-    The experience replay policy.
+    经验回放（experience replay）策略。
     """
 
     def __init__(self, n_tasks, cfg, **policy_kwargs):
         super().__init__(n_tasks=n_tasks, cfg=cfg, **policy_kwargs)
-        # we truncate each sequence dataset to a buffer, when replay is used,
-        # concate all buffers to form a single replay buffer for replay.
+        # 我们将每个序列数据集截断为一个缓冲区，当使用回放时，
+        # 将所有缓冲区拼接形成单个回放缓冲区以进行回放。
         self.datasets = []
         self.descriptions = []
         self.buffer = None
@@ -48,7 +48,7 @@ class ER(Sequential):
     def start_task(self, task):
         super().start_task(task)
         if self.current_task > 0:
-            # WARNING: currently we have a fixed size memory for each task.
+            # 警告：目前我们为每个任务使用固定大小的内存。
             buffers = [
                 TruncatedSequenceDataset(dataset, self.cfg.lifelong.n_memories)
                 for dataset in self.datasets

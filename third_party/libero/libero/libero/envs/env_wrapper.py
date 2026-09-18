@@ -47,9 +47,9 @@ class ControlEnv:
         controller_configs = suite.load_controller_config(default_controller=controller)
 
         problem_info = BDDLUtils.get_problem_info(bddl_file_name)
-        # Check if we're using a multi-armed environment and use env_configuration argument if so
+        # 检查我们是否使用多臂环境，如果是则使用env_configuration参数
 
-        # Create environment
+        # 创建环境
         self.problem_name = problem_info["problem_name"]
         self.domain_name = problem_info["domain_name"]
         self.language_instruction = problem_info["language_instruction"]
@@ -151,11 +151,11 @@ class ControlEnv:
 
 class OffScreenRenderEnv(ControlEnv):
     """
-    For visualization and evaluation.
+    用于可视化和评估。
     """
 
     def __init__(self, **kwargs):
-        # This shouldn't be customized
+        # 这不应该被自定义
         kwargs["has_renderer"] = False
         kwargs["has_offscreen_renderer"] = True
         super().__init__(**kwargs)
@@ -163,8 +163,8 @@ class OffScreenRenderEnv(ControlEnv):
 
 class SegmentationRenderEnv(OffScreenRenderEnv):
     """
-    This wrapper will additionally generate the segmentation mask of objects,
-    which is useful for comparing attention.
+    此包装器还会额外生成物体的分割掩码，
+    这对于比较注意力很有用。
     """
 
     def __init__(
@@ -204,7 +204,7 @@ class SegmentationRenderEnv(OffScreenRenderEnv):
         return obs
 
     def get_segmentation_instances(self, segmentation_image):
-        # get all instances' segmentation separately
+        # 分别获取所有实例的分割
         seg_img_dict = {}
         segmentation_image[segmentation_image > self.segmentation_robot_id] = (
             self.segmentation_robot_id + 1
@@ -220,10 +220,10 @@ class SegmentationRenderEnv(OffScreenRenderEnv):
         return seg_img_dict
 
     def get_segmentation_of_interest(self, segmentation_image):
-        # get the combined segmentation of obj of interest
-        # 1 for obj_of_interest
-        # -1.0 for robot
-        # 0 for other things
+        # 获取感兴趣物体的组合分割
+        # 1 表示感兴趣物体
+        # -1.0 表示机器人
+        # 0 表示其他物体
         ret_seg = np.zeros_like(segmentation_image)
         for obj in self.obj_of_interest:
             ret_seg[segmentation_image == self.instance_to_id[obj]] = 1.0
@@ -233,18 +233,18 @@ class SegmentationRenderEnv(OffScreenRenderEnv):
 
     def segmentation_to_rgb(self, seg_im, random_colors=False):
         """
-        Helper function to visualize segmentations as RGB frames.
-        NOTE: assumes that geom IDs go up to 255 at most - if not,
-        multiple geoms might be assigned to the same color.
+        将分割可视化为RGB帧的辅助函数。
+        注意：假设几何体ID最多到255 - 如果不是，
+        多个几何体可能会被分配到相同的颜色。
         """
-        # ensure all values lie within [0, 255]
+        # 确保所有值在[0, 255]范围内
         seg_im = np.mod(seg_im, 256)
 
         if random_colors:
             colors = randomize_colors(N=256, bright=True)
             return (255.0 * colors[seg_im]).astype(np.uint8)
         else:
-            # deterministic shuffling of values to map each geom ID to a random int in [0, 255]
+            # 确定性地将值打乱，将每个几何体ID映射到[0, 255]中的随机整数
             rstate = np.random.RandomState(seed=2)
             inds = np.arange(256)
             rstate.shuffle(inds)
@@ -257,17 +257,17 @@ class SegmentationRenderEnv(OffScreenRenderEnv):
             print(seg_img.shape)
             cv2.imshow("Seg Image", seg_img[::-1])
             cv2.waitKey(1)
-            # use @inds to map each geom ID to a color
+            # 使用@inds将每个几何体ID映射到一种颜色
             return seg_img
 
 
 class DemoRenderEnv(ControlEnv):
     """
-    For visualization and evaluation.
+    用于可视化和评估。
     """
 
     def __init__(self, **kwargs):
-        # This shouldn't be customized
+        # 这不应该被自定义
         kwargs["has_renderer"] = False
         kwargs["has_offscreen_renderer"] = True
         kwargs["render_camera"] = "frontview"

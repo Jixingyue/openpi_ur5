@@ -34,12 +34,12 @@ _NP_TO_CT = {
 
 
 def deprecation(msg: str) -> None:
-    """Deprecation warning wrapper."""
+    """弃用警告包装器。"""
     warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
 
 
 class CloudpickleWrapper(object):
-    """A cloudpickle wrapper used in SubprocVectorEnv."""
+    """在SubprocVectorEnv中使用的cloudpickle包装器。"""
 
     def __init__(self, data: Any) -> None:
         self.data = data
@@ -62,13 +62,13 @@ GYM_RESERVED_KEYS = [
 
 ################################################################################
 #
-# Workers
+# 工作器
 #
 ################################################################################
 
 
 class EnvWorker(ABC):
-    """An abstract worker for an environment."""
+    """环境的抽象工作器。"""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
@@ -91,11 +91,11 @@ class EnvWorker(ABC):
         pass
 
     def send(self, action: Optional[np.ndarray]) -> None:
-        """Send action signal to low-level worker.
+        """向低层工作器发送动作信号。
 
-        When action is None, it indicates sending "reset" signal; otherwise
-        it indicates "step" signal. The paired return value from "recv"
-        function is determined by such kind of different signal.
+        当action为None时，表示发送“reset”信号；否则
+        表示“step”信号。“recv”函数的配对返回值
+        由这种不同的信号决定。
         """
         if hasattr(self, "send_action"):
             deprecation(
@@ -117,12 +117,12 @@ class EnvWorker(ABC):
         Tuple[np.ndarray, dict],
         np.ndarray,
     ]:  # noqa:E125
-        """Receive result from low-level worker.
+        """从低层工作器接收结果。
 
-        If the last "send" function sends a NULL action, it only returns a
-        single observation; otherwise it returns a tuple of (obs, rew, done,
-        info) or (obs, rew, terminated, truncated, info), based on whether
-        the environment is using the old step API or the new one.
+        如果上次“send”函数发送了NULL动作，它只返回一个
+        单独的观测；否则它返回(obs, rew, done,
+        info)或(obs, rew, terminated, truncated, info)的元组，基于
+        环境是使用旧的step API还是新的。
         """
         if hasattr(self, "get_result"):
             deprecation(
@@ -140,11 +140,11 @@ class EnvWorker(ABC):
     def step(
         self, action: np.ndarray
     ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
-        """Perform one timestep of the environment's dynamic.
+        """执行环境动态的一个时间步。
 
-        "send" and "recv" are coupled in sync simulation, so users only call
-        "step" function. But they can be called separately in async
-        simulation, i.e. someone calls "send" first, and calls "recv" later.
+        “send”和“recv”在同步仿真中是耦合的，因此用户只调用
+        “step”函数。但它们可以在异步仿真中分开调用，
+        即某人先调用“send”，然后稍后调用“recv”。
         """
         self.send(action)
         return self.recv()  # type: ignore
@@ -153,7 +153,7 @@ class EnvWorker(ABC):
     def wait(
         workers: List["EnvWorker"], wait_num: int, timeout: Optional[float] = None
     ) -> List["EnvWorker"]:
-        """Given a list of workers, return those ready ones."""
+        """给定一组工作器，返回已就绪的工作器。"""
         raise NotImplementedError
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
@@ -162,7 +162,7 @@ class EnvWorker(ABC):
 
     @abstractmethod
     def render(self, **kwargs: Any) -> Any:
-        """Render the environment."""
+        """渲染环境。"""
         pass
 
     @abstractmethod
@@ -177,7 +177,7 @@ class EnvWorker(ABC):
 
 
 class ShArray:
-    """Wrapper of multiprocessing Array."""
+    """多进程Array的包装器。"""
 
     def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
         self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))  # type: ignore
@@ -293,7 +293,7 @@ def _worker(
 
 
 class DummyEnvWorker(EnvWorker):
-    """Dummy worker used in sequential vector environments."""
+    """在顺序向量环境中使用的虚拟工作器。"""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self.env = env_fn()
@@ -314,7 +314,7 @@ class DummyEnvWorker(EnvWorker):
     def wait(  # type: ignore
         workers: List["DummyEnvWorker"], wait_num: int, timeout: Optional[float] = None
     ) -> List["DummyEnvWorker"]:
-        # Sequential EnvWorker objects are always ready
+        # 顺序EnvWorker对象始终就绪
         return workers
 
     def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
@@ -351,7 +351,7 @@ class DummyEnvWorker(EnvWorker):
 
 
 class SubprocEnvWorker(EnvWorker):
-    """Subprocess worker used in SubprocVectorEnv and ShmemVectorEnv."""
+    """在SubprocVectorEnv和ShmemVectorEnv中使用的子进程工作器。"""
 
     def __init__(
         self, env_fn: Callable[[], gym.Env], share_memory: bool = False
@@ -412,7 +412,7 @@ class SubprocEnvWorker(EnvWorker):
                 remain_time = timeout - (time.time() - t1)
                 if remain_time <= 0:
                     break
-            # connection.wait hangs if the list is empty
+            # 如果列表为空，connection.wait会挂起
             new_ready_conns = connection.wait(remain_conns, timeout=remain_time)
             ready_conns.extend(new_ready_conns)  # type: ignore
             remain_conns = [conn for conn in remain_conns if conn not in ready_conns]
@@ -481,12 +481,12 @@ class SubprocEnvWorker(EnvWorker):
     def close_env(self) -> None:
         try:
             self.parent_remote.send(["close", None])
-            # mp may be deleted so it may raise AttributeError
+            # mp可能已被删除，因此可能抛出AttributeError
             self.parent_remote.recv()
             self.process.join()
         except (BrokenPipeError, EOFError, AttributeError):
             pass
-        # ensure the subproc is terminated
+        # 确保子进程已终止
         self.process.terminate()
 
     def check_success(self):
@@ -517,54 +517,54 @@ class SubprocEnvWorker(EnvWorker):
 
 
 class BaseVectorEnv(object):
-    """Base class for vectorized environments.
+    """向量化环境的基类。
 
-    Usage:
+    用法：
     ::
 
         env_num = 8
         envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(env_num)])
         assert len(envs) == env_num
 
-    It accepts a list of environment generators. In other words, an environment
-    generator ``efn`` of a specific task means that ``efn()`` returns the
-    environment of the given task, for example, ``gym.make(task)``.
+    它接受一个环境生成器列表。换句话说，某个特定任务的
+    环境生成器 ``efn`` 意味着 ``efn()`` 返回该给定任务的
+    环境，例如 ``gym.make(task)``。
 
-    All of the VectorEnv must inherit :class:`~tianshou.env.BaseVectorEnv`.
-    Here are some other usages:
+    所有的 VectorEnv 都必须继承 :class:`~tianshou.env.BaseVectorEnv`。
+    以下是一些其他用法：
     ::
 
-        envs.seed(2)  # which is equal to the next line
-        envs.seed([2, 3, 4, 5, 6, 7, 8, 9])  # set specific seed for each env
-        obs = envs.reset()  # reset all environments
-        obs = envs.reset([0, 5, 7])  # reset 3 specific environments
-        obs, rew, done, info = envs.step([1] * 8)  # step synchronously
-        envs.render()  # render all environments
-        envs.close()  # close all environments
+        envs.seed(2)  # 等价于下一行
+        envs.seed([2, 3, 4, 5, 6, 7, 8, 9])  # 为每个环境设置特定的种子
+        obs = envs.reset()  # 重置所有环境
+        obs = envs.reset([0, 5, 7])  # 重置 3 个特定环境
+        obs, rew, done, info = envs.step([1] * 8)  # 同步步进
+        envs.render()  # 渲染所有环境
+        envs.close()  # 关闭所有环境
 
     .. warning::
 
-        If you use your own environment, please make sure the ``seed`` method
-        is set up properly, e.g.,
+        如果你使用自己的环境，请确保 ``seed`` 方法
+        已正确设置，例如：
         ::
 
             def seed(self, seed):
                 np.random.seed(seed)
 
-        Otherwise, the outputs of these envs may be the same with each other.
+        否则，这些环境的输出可能彼此相同。
 
-    :param env_fns: a list of callable envs, ``env_fns[i]()`` generates the i-th env.
-    :param worker_fn: a callable worker, ``worker_fn(env_fns[i])`` generates a
-        worker which contains the i-th env.
-    :param int wait_num: use in asynchronous simulation if the time cost of
-        ``env.step`` varies with time and synchronously waiting for all
-        environments to finish a step is time-wasting. In that case, we can
-        return when ``wait_num`` environments finish a step and keep on
-        simulation in these environments. If ``None``, asynchronous simulation
-        is disabled; else, ``1 <= wait_num <= env_num``.
-    :param float timeout: use in asynchronous simulation same as above, in each
-        vectorized step it only deal with those environments spending time
-        within ``timeout`` seconds.
+    :param env_fns: 一个可调用环境的列表，``env_fns[i]()`` 生成第 i 个环境。
+    :param worker_fn: 一个可调用工作器，``worker_fn(env_fns[i])`` 生成一个
+        包含第 i 个环境的工作器。
+    :param int wait_num: 用于异步仿真，当 ``env.step`` 的时间开销
+        随时间变化，且同步等待所有环境完成一个步进
+        很浪费时间时。在这种情况下，我们可以在 ``wait_num`` 个环境
+        完成一个步进时就返回，并在这些环境中继续
+        仿真。如果为 ``None``，则禁用异步仿真；
+        否则 ``1 <= wait_num <= env_num``。
+    :param float timeout: 同上述用于异步仿真，在每个向量化
+        步进中只处理那些耗时在 ``timeout`` 秒以内的
+        环境。
     """
 
     def __init__(
@@ -575,8 +575,8 @@ class BaseVectorEnv(object):
         timeout: Optional[float] = None,
     ) -> None:
         self._env_fns = env_fns
-        # A VectorEnv contains a pool of EnvWorkers, which corresponds to
-        # interact with the given envs (one worker <-> one env).
+        # 一个 VectorEnv 包含一个 EnvWorker 池，它们负责
+        # 与给定的环境交互（一个工作器 <-> 一个环境）。
         self.workers = [worker_fn(fn) for fn in env_fns]
         self.worker_class = type(self.workers[0])
         assert issubclass(self.worker_class, EnvWorker)
@@ -593,12 +593,12 @@ class BaseVectorEnv(object):
         ), f"timeout is {timeout}, it should be positive if provided!"
         self.is_async = self.wait_num != len(env_fns) or timeout is not None
         self.waiting_conn: List[EnvWorker] = []
-        # environments in self.ready_id is actually ready
-        # but environments in self.waiting_id are just waiting when checked,
-        # and they may be ready now, but this is not known until we check it
-        # in the step() function
+        # self.ready_id 中的环境是真正就绪的
+        # 而 self.waiting_id 中的环境在检查时只是处于等待状态，
+        # 它们现在可能已经就绪，但在我们在 step() 函数中
+        # 检查之前这是未知的
         self.waiting_id: List[int] = []
-        # all environments are ready in the beginning
+        # 一开始所有环境都是就绪的
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
 
@@ -608,15 +608,15 @@ class BaseVectorEnv(object):
         ), f"Methods of {self.__class__.__name__} cannot be called after close."
 
     def __len__(self) -> int:
-        """Return len(self), which is the number of environments."""
+        """返回 len(self)，即环境的数量。"""
         return self.env_num
 
     def __getattribute__(self, key: str) -> Any:
-        """Switch the attribute getter depending on the key.
+        """根据 key 切换属性获取方式。
 
-        Any class who inherits ``gym.Env`` will inherit some attributes, like
-        ``action_space``. However, we would like the attribute lookup to go straight
-        into the worker (in fact, this vector env's action_space is always None).
+        任何继承 ``gym.Env`` 的类都会继承一些属性，例如
+        ``action_space``。然而，我们希望属性查找直接进入
+        工作器（实际上，这个向量环境的 action_space 总是 None）。
         """
         if key in GYM_RESERVED_KEYS:  # reserved keys in gym.Env
             return self.get_env_attr(key)
@@ -628,17 +628,17 @@ class BaseVectorEnv(object):
         key: str,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> List[Any]:
-        """Get an attribute from the underlying environments.
+        """从底层环境获取一个属性。
 
-        If id is an int, retrieve the attribute denoted by key from the environment
-        underlying the worker at index id. The result is returned as a list with one
-        element. Otherwise, retrieve the attribute for all workers at indices id and
-        return a list that is ordered correspondingly to id.
+        如果 id 是一个整数，则从索引为 id 的工作器底层环境中
+        检索由 key 表示的属性。结果以包含单个元素的
+        列表形式返回。否则，检索索引为 id 的所有工作器的该属性，
+        并返回一个与 id 顺序对应的列表。
 
-        :param str key: The key of the desired attribute.
-        :param id: Indice(s) of the desired worker(s). Default to None for all env_id.
+        :param str key: 所需属性的键。
+        :param id: 所需工作器的索引。默认为 None，表示所有 env_id。
 
-        :return list: The list of environment attributes.
+        :return list: 环境属性的列表。
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
@@ -653,15 +653,15 @@ class BaseVectorEnv(object):
         value: Any,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> None:
-        """Set an attribute in the underlying environments.
+        """在底层环境中设置一个属性。
 
-        If id is an int, set the attribute denoted by key from the environment
-        underlying the worker at index id to value.
-        Otherwise, set the attribute for all workers at indices id.
+        如果 id 是一个整数，则将索引为 id 的工作器底层环境中
+        由 key 表示的属性设置为 value。
+        否则，为索引为 id 的所有工作器设置该属性。
 
-        :param str key: The key of the desired attribute.
-        :param Any value: The new value of the attribute.
-        :param id: Indice(s) of the desired worker(s). Default to None for all env_id.
+        :param str key: 所需属性的键。
+        :param Any value: 该属性的新值。
+        :param id: 所需工作器的索引。默认为 None，表示所有 env_id。
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
@@ -692,18 +692,18 @@ class BaseVectorEnv(object):
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
     ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
-        """Reset the state of some envs and return initial observations.
+        """重置某些环境的状态并返回初始观测值。
 
-        If id is None, reset the state of all the environments and return
-        initial observations, otherwise reset the specific environments with
-        the given id, either an int or a list.
+        如果 id 为 None，则重置所有环境的状态并返回
+        初始观测值；否则重置具有给定 id（可以是整数或列表）的
+        特定环境。
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
 
-        # send(None) == reset() in worker
+        # 在工作器中 send(None) == reset()
         for i in id:
             self.workers[i].send(None, **kwargs)
         ret_list = [self.workers[i].recv() for i in id]
@@ -739,49 +739,46 @@ class BaseVectorEnv(object):
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
-        """Run one timestep of some environments' dynamics.
+        """运行某些环境动力学的一个时间步。
 
-        If id is None, run one timestep of all the environments’ dynamics;
-        otherwise run one timestep for some environments with given id,  either
-        an int or a list. When the end of episode is reached, you are
-        responsible for calling reset(id) to reset this environment’s state.
+        如果 id 为 None，则运行所有环境动力学的一个时间步；
+        否则为具有给定 id（可以是整数或列表）的某些环境运行
+        一个时间步。当到达一个回合的末尾时，你有责任
+        调用 reset(id) 来重置该环境的状态。
 
-        Accept a batch of action and return a tuple (batch_obs, batch_rew,
-        batch_done, batch_info) in numpy format.
+        接受一批动作，并以 numpy 格式返回一个元组
+        (batch_obs, batch_rew, batch_done, batch_info)。
 
-        :param numpy.ndarray action: a batch of action provided by the agent.
+        :param numpy.ndarray action: 由智能体提供的一批动作。
 
-        :return: A tuple consisting of either:
+        :return: 一个由以下内容组成的元组：
 
-            * ``obs`` a numpy.ndarray, the agent's observation of current environments
-            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
-                previous actions
-            * ``done`` a numpy.ndarray, whether these episodes have ended, in \
-                which case further step() calls will return undefined results
-            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
-                information (helpful for debugging, and sometimes learning)
+            * ``obs`` 一个 numpy.ndarray，智能体对当前环境的观测值
+            * ``rew`` 一个 numpy.ndarray，上一个动作之后返回的奖励量
+            * ``done`` 一个 numpy.ndarray，这些回合是否已结束，\
+                若已结束，则进一步的 step() 调用将返回未定义的结果
+            * ``info`` 一个 numpy.ndarray，包含辅助诊断信息\
+                （有助于调试，有时也有助于学习）
 
-            or:
+            或：
 
-            * ``obs`` a numpy.ndarray, the agent's observation of current environments
-            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
-                previous actions
-            * ``terminated`` a numpy.ndarray, whether these episodes have been \
-                terminated
-            * ``truncated`` a numpy.ndarray, whether these episodes have been truncated
-            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
-                information (helpful for debugging, and sometimes learning)
+            * ``obs`` 一个 numpy.ndarray，智能体对当前环境的观测值
+            * ``rew`` 一个 numpy.ndarray，上一个动作之后返回的奖励量
+            * ``terminated`` 一个 numpy.ndarray，这些回合是否已被\
+                终止
+            * ``truncated`` 一个 numpy.ndarray，这些回合是否已被截断
+            * ``info`` 一个 numpy.ndarray，包含辅助诊断信息\
+                （有助于调试，有时也有助于学习）
 
-            The case distinction is made based on whether the underlying environment
-            uses the old step API (first case) or the new step API (second case).
+            情况区分基于底层环境使用的是旧的 step API
+            （第一种情况）还是新的 step API（第二种情况）。
 
-        For the async simulation:
+        对于异步仿真：
 
-        Provide the given action to the environments. The action sequence
-        should correspond to the ``id`` argument, and the ``id`` argument
-        should be a subset of the ``env_id`` in the last returned ``info``
-        (initially they are env_ids of all the environments). If action is
-        None, fetch unfinished step() calls instead.
+        向环境提供给定的动作。动作序列应与 ``id`` 参数
+        对应，且 ``id`` 参数应是上一次返回的 ``info`` 中
+        ``env_id`` 的子集（初始时它们是所有环境的 env_id）。
+        如果 action 为 None，则改为获取未完成的 step() 调用。
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
@@ -813,10 +810,10 @@ class BaseVectorEnv(object):
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)
                 env_id = self.waiting_id.pop(waiting_index)
-                # env_return can be (obs, reward, done, info) or
+                # env_return 可以是 (obs, reward, done, info) 或
                 # (obs, reward, terminated, truncated, info)
                 env_return = conn.recv()
-                env_return[-1]["env_id"] = env_id  # Add `env_id` to info
+                env_return[-1]["env_id"] = env_id  # 将 `env_id` 添加到 info 中
                 result.append(env_return)
                 self.ready_id.append(env_id)
         return_lists = tuple(zip(*result))
@@ -832,14 +829,14 @@ class BaseVectorEnv(object):
         self,
         seed: Optional[Union[int, List[int]]] = None,
     ) -> List[Optional[List[int]]]:
-        """Set the seed for all environments.
+        """为所有环境设置种子。
 
-        Accept ``None``, an int (which will extend ``i`` to
-        ``[i, i + 1, i + 2, ...]``) or a list.
+        接受 ``None``、一个整数（它会将 ``i`` 扩展为
+        ``[i, i + 1, i + 2, ...]``）或一个列表。
 
-        :return: The list of seeds used in this env's random number generators.
-            The first value in the list should be the "main" seed, or the value
-            which a reproducer pass to "seed".
+        :return: 本环境随机数生成器中使用的种子列表。
+            列表中的第一个值应该是"主"种子，即复现者
+            传给 "seed" 的值。
         """
         self._assert_is_not_closed()
         seed_list: Union[List[None], List[int]]
@@ -852,7 +849,7 @@ class BaseVectorEnv(object):
         return [w.seed(s) for w, s in zip(self.workers, seed_list)]
 
     def render(self, **kwargs: Any) -> List[Any]:
-        """Render all of the environments."""
+        """渲染所有环境。"""
         self._assert_is_not_closed()
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
@@ -862,10 +859,10 @@ class BaseVectorEnv(object):
         return [w.render(**kwargs) for w in self.workers]
 
     def close(self) -> None:
-        """Close all of the environments.
+        """关闭所有环境。
 
-        This function will be called only once (if not, it will be called during
-        garbage collected). This way, ``close`` of all workers can be assured.
+        该函数只会被调用一次（如果未调用，它将在垃圾回收
+        时被调用）。这样，就可以保证所有工作器的 ``close`` 都被执行。
         """
         self._assert_is_not_closed()
         for w in self.workers:
@@ -874,11 +871,11 @@ class BaseVectorEnv(object):
 
 
 class DummyVectorEnv(BaseVectorEnv):
-    """Dummy vectorized environment wrapper, implemented in for-loop.
+    """虚拟向量化环境包装器，以 for 循环实现。
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
+        关于其他 API 的用法，请参阅 :class:`~tianshou.env.BaseVectorEnv`。
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
@@ -902,17 +899,17 @@ class DummyVectorEnv(BaseVectorEnv):
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
     ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
-        """Reset the state of some envs and return initial observations.
-        If id is None, reset the state of all the environments and return
-        initial observations, otherwise reset the specific environments with
-        the given id, either an int or a list.
+        """重置某些环境的状态并返回初始观测值。
+        如果 id 为 None，则重置所有环境的状态并返回
+        初始观测值；否则重置具有给定 id（可以是整数或列表）的
+        特定环境。
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
 
-        # send(None) == reset() in worker
+        # 在工作器中 send(None) == reset()
         obs_list = []
         for j, i in enumerate(id):
             obs = self.workers[i].set_init_state(init_state[j])
@@ -922,11 +919,11 @@ class DummyVectorEnv(BaseVectorEnv):
 
 
 class SubprocVectorEnv(BaseVectorEnv):
-    """Vectorized environment wrapper based on subprocess.
+    """基于子进程的向量化环境包装器。
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
+        关于其他 API 的用法，请参阅 :class:`~tianshou.env.BaseVectorEnv`。
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
@@ -953,17 +950,17 @@ class SubprocVectorEnv(BaseVectorEnv):
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
     ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
-        """Reset the state of some envs and return initial observations.
-        If id is None, reset the state of all the environments and return
-        initial observations, otherwise reset the specific environments with
-        the given id, either an int or a list.
+        """重置某些环境的状态并返回初始观测值。
+        如果 id 为 None，则重置所有环境的状态并返回
+        初始观测值；否则重置具有给定 id（可以是整数或列表）的
+        特定环境。
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
 
-        # send(None) == reset() in worker
+        # 在工作器中 send(None) == reset()
         obs_list = []
         for j, i in enumerate(id):
             obs = self.workers[i].set_init_state(init_state[j])

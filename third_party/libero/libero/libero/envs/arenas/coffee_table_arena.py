@@ -5,7 +5,7 @@ from libero.libero.envs.arenas.style import get_texture_filename
 
 
 class CoffeeTableArena(Arena):
-    """Empty workspace."""
+    """空工作空间。"""
 
     def __init__(
         self,

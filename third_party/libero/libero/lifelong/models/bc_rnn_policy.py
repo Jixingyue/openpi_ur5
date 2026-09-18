@@ -11,7 +11,7 @@ from libero.lifelong.models.policy_head import *
 
 ###############################################################################
 #
-# A model handling extra input modalities besides images at time t.
+# 一个在时间 t 处理除图像之外的额外输入模态的模型。
 #
 ###############################################################################
 
@@ -45,11 +45,11 @@ class ExtraModalities:
     def __call__(self, obs_dict):
         """
         obs_dict: {
-            (optional) joint_stats: (B, T, 7),
-            (optional) gripper_states: (B, T, 2),
-            (optional) ee: (B, T, 3)
+            （可选）joint_stats: (B, T, 7),
+            （可选）gripper_states: (B, T, 2),
+            （可选）ee: (B, T, 3)
         }
-        map above to a latent vector of shape (B, T, H)
+        将上述内容映射为形状为 (B, T, H) 的潜在向量
         """
         tensor_list = []
         if self.use_joint:
@@ -67,22 +67,22 @@ class ExtraModalities:
 
 ###############################################################################
 #
-# A RNN policy
+# 一个 RNN 策略
 #
 ###############################################################################
 
 
 class BCRNNPolicy(BasePolicy):
     """
-    Input: (o_{t-H}, ... , o_t)
-    Output: a_t or distribution of a_t
+    输入：(o_{t-H}, ... , o_t)
+    输出：a_t 或 a_t 的分布
     """
 
     def __init__(self, cfg, shape_meta):
         super().__init__(cfg, shape_meta)
         policy_cfg = cfg.policy
 
-        ### 1. encode image
+        ### 1. 编码图像
         rnn_input_size = 0
         image_embed_size = policy_cfg.image_embed_size
         self.image_encoders = {}
@@ -103,7 +103,7 @@ class BCRNNPolicy(BasePolicy):
             [x["encoder"] for x in self.image_encoders.values()]
         )
 
-        ### 2. encode language
+        ### 2. 编码语言
         text_embed_size = policy_cfg.text_embed_size
         policy_cfg.language_encoder.network_kwargs.output_size = text_embed_size
         self.language_encoder = eval(policy_cfg.language_encoder.network)(
@@ -111,7 +111,7 @@ class BCRNNPolicy(BasePolicy):
         )
         rnn_input_size += text_embed_size
 
-        ### 3. encode extra information (e.g. gripper, joint_state)
+        ### 3. 编码额外信息（例如夹爪、joint_state）
         self.extra_encoder = ExtraModalities(
             use_joint=cfg.data.use_joint,
             use_gripper=cfg.data.use_gripper,
@@ -128,7 +128,7 @@ class BCRNNPolicy(BasePolicy):
             bidirectional=policy_cfg.rnn_bidirectional,
         )
 
-        ### 4. use policy head to output action
+        ### 4. 使用策略头输出动作
         self.D = 2 if policy_cfg.rnn_bidirectional else 1
         policy_head_kwargs = policy_cfg.policy_head.network_kwargs
         policy_head_kwargs.input_size = self.D * policy_cfg.rnn_hidden_size
@@ -142,7 +142,7 @@ class BCRNNPolicy(BasePolicy):
         self.eval_c0 = None
 
     def forward(self, data, train_mode=True):
-        # 1. encode image
+        # 1. 编码图像
         encoded = []
         for img_name in self.image_encoders.keys():
             x = data["obs"][img_name]
@@ -156,17 +156,17 @@ class BCRNNPolicy(BasePolicy):
             ).view(B, T, -1)
             encoded.append(e)
 
-        # 2. add joint states, gripper info, etc.
-        encoded.append(self.extra_encoder(data["obs"]))  # add (B, T, H_extra)
+        # 2. 添加关节状态、夹爪信息等
+        encoded.append(self.extra_encoder(data["obs"]))  # 添加 (B, T, H_extra)
         encoded = torch.cat(encoded, -1)  # (B, T, H_all)
 
-        # 3. language encoding
+        # 3. 语言编码
         lang_h = self.language_encoder(data)  # (B, H)
         encoded = torch.cat(
             [encoded, lang_h.unsqueeze(1).expand(-1, encoded.shape[1], -1)], dim=-1
         )
 
-        # 4. apply temporal rnn
+        # 4. 应用时序 rnn
         if train_mode:
             h0 = torch.zeros(
                 self.D * self.cfg.policy.rnn_num_layers,

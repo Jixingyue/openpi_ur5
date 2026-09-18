@@ -1,4 +1,4 @@
-# read the contents of your README file
+# 读取你的 README 文件的内容
 from os import path
 
 from setuptools import find_packages, setup
@@ -7,7 +7,7 @@ this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, "./README.md"), encoding="utf-8") as f:
     lines = f.readlines()
 
-# remove images from README
+# 从 README 中移除图像
 lines = [x for x in lines if ".png" not in x]
 long_description = "".join(lines)
 

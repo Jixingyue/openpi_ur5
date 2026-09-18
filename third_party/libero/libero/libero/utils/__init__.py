@@ -1,7 +1,7 @@
 import os
 import yaml
 
-# This is a default path for localizing all the benchmark related files
+# 这是用于定位所有基准测试相关文件的默认路径
 libero_config_path = os.environ.get(
     "LIBERO_CONFIG_PATH", os.path.expanduser("~/.libero")
 )
@@ -11,13 +11,13 @@ config_file = os.path.join(libero_config_path, "config.yaml")
 def get_path_dict(root_location=os.path.dirname(os.path.abspath(__file__))):
     benchmark_root_path = root_location
 
-    # This is a default path for localizing all the default bddl files
+    # 这是用于定位所有默认 bddl 文件的默认路径
     bddl_files_default_path = os.path.join(benchmark_root_path, "./bddl_files")
 
-    # This is a default path for localizing all the default bddl files
+    # 这是用于定位所有默认 bddl 文件的默认路径
     init_states_default_path = os.path.join(benchmark_root_path, "./init_files")
 
-    # This is a default path for localizing all the default datasets
+    # 这是用于定位所有默认数据集的默认路径
     dataset_default_path = os.path.join(benchmark_root_path, "../datasets")
 
     return {
@@ -45,8 +45,8 @@ if not os.path.exists(libero_config_path):
     os.makedirs(libero_config_path)
 
 if not os.path.exists(config_file):
-    # Create a default config file
+    # 创建一个默认配置文件
 
-    # write all the paths into a yaml file
+    # 将所有路径写入一个 yaml 文件
     with open(config_file, "w") as f:
         yaml.dump(get_path_dict(), f)

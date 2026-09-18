@@ -1,7 +1,7 @@
 """
-This file contains all neural modules related to encoding the spatial
-information of obs_t, i.e., the abstracted knowledge of the current visual
-input conditioned on the language.
+本文件包含所有与编码 obs_t 空间信息相关的神经模块，
+即在语言条件下对当前视觉输入进行抽象后的
+知识。
 """
 import torch
 import torch.nn as nn
@@ -11,14 +11,14 @@ import torchvision
 
 ###############################################################################
 #
-# Modules related to encoding visual information (can conditioned on language)
+# 与编码视觉信息相关的模块（可以在语言条件下）
 #
 ###############################################################################
 
 
 class PatchEncoder(nn.Module):
     """
-    A patch encoder that does a linear projection of patches in a RGB image.
+    一个对 RGB 图像中的图块进行线性投影的图块编码器。
     """
 
     def __init__(
@@ -60,7 +60,7 @@ class PatchEncoder(nn.Module):
 
 class SpatialSoftmax(nn.Module):
     """
-    The spatial softmax layer (https://rll.berkeley.edu/dsae/dsae.pdf)
+    空间 softmax 层（https://rll.berkeley.edu/dsae/dsae.pdf）
     """
 
     def __init__(self, in_c, in_h, in_w, num_kp=None):
@@ -131,21 +131,21 @@ class SpatialProjection(nn.Module):
 
 class ResnetEncoder(nn.Module):
     """
-    A Resnet-18-based encoder for mapping an image to a latent vector
+    一个基于 Resnet-18 的编码器，用于将图像映射为潜在向量
 
-    Encode (f) an image into a latent vector.
+    将图像编码（f）为潜在向量。
 
-    y = f(x), where
+    y = f(x)，其中
         x: (B, C, H, W)
         y: (B, H_out)
 
-    Args:
-        input_shape:      (C, H, W), the shape of the image
-        output_size:      H_out, the latent vector size
-        pretrained:       whether use pretrained resnet
-        freeze: whether   freeze the pretrained resnet
-        remove_layer_num: remove the top # layers
-        no_stride:        do not use striding
+    参数：
+        input_shape:      (C, H, W)，图像的形状
+        output_size:      H_out，潜在向量的尺寸
+        pretrained:       是否使用预训练的 resnet
+        freeze: 是否   冻结预训练的 resnet
+        remove_layer_num: 移除顶部的 # 层
+        no_stride:        不使用跨步
     """
 
     def __init__(
@@ -162,7 +162,7 @@ class ResnetEncoder(nn.Module):
 
         super().__init__()
 
-        ### 1. encode input (images) using convolutional layers
+        ### 1. 使用卷积层编码输入（图像）
         assert remove_layer_num <= 5, "[error] please only remove <=5 layers"
         layers = list(torchvision.models.resnet18(pretrained=pretrained).children())[
             :-remove_layer_num
@@ -174,7 +174,7 @@ class ResnetEncoder(nn.Module):
         ), "[error] input shape of resnet should be (C, H, W)"
 
         in_channels = input_shape[0]
-        if in_channels != 3:  # has eye_in_hand, increase channel size
+        if in_channels != 3:  # 存在 eye_in_hand，增加通道尺寸
             conv0 = nn.Conv2d(
                 in_channels=in_channels,
                 out_channels=64,
@@ -212,12 +212,12 @@ class ResnetEncoder(nn.Module):
             for param in self.resnet18_embeddings.parameters():
                 param.requires_grad = False
 
-        ### 2. project the encoded input to a latent space
+        ### 2. 将编码后的输入投影到潜在空间
         x = torch.zeros(1, *input_shape)
         y = self.block_4(
             self.block_3(self.block_2(self.block_1(self.resnet18_base(x))))
         )
-        output_shape = y.shape  # compute the out dim
+        output_shape = y.shape  # 计算输出维度
         self.projection_layer = SpatialProjection(output_shape[1:], output_size)
         self.output_shape = self.projection_layer(y).shape
 
@@ -225,7 +225,7 @@ class ResnetEncoder(nn.Module):
         h = self.resnet18_base(x)
 
         h = self.block_1(h)
-        if langs is not None and self.language_fusion != "none":  # FiLM layer
+        if langs is not None and self.language_fusion != "none":  # FiLM 层
             B, C, H, W = h.shape
             beta, gamma = torch.split(
                 self.lang_proj1(langs).reshape(B, C * 2, 1, 1), [C, C], 1
@@ -233,7 +233,7 @@ class ResnetEncoder(nn.Module):
             h = (1 + gamma) * h + beta
 
         h = self.block_2(h)
-        if langs is not None and self.language_fusion != "none":  # FiLM layer
+        if langs is not None and self.language_fusion != "none":  # FiLM 层
             B, C, H, W = h.shape
             beta, gamma = torch.split(
                 self.lang_proj2(langs).reshape(B, C * 2, 1, 1), [C, C], 1
@@ -241,7 +241,7 @@ class ResnetEncoder(nn.Module):
             h = (1 + gamma) * h + beta
 
         h = self.block_3(h)
-        if langs is not None and self.language_fusion != "none":  # FiLM layer
+        if langs is not None and self.language_fusion != "none":  # FiLM 层
             B, C, H, W = h.shape
             beta, gamma = torch.split(
                 self.lang_proj3(langs).reshape(B, C * 2, 1, 1), [C, C], 1
@@ -249,7 +249,7 @@ class ResnetEncoder(nn.Module):
             h = (1 + gamma) * h + beta
 
         h = self.block_4(h)
-        if langs is not None and self.language_fusion != "none":  # FiLM layer
+        if langs is not None and self.language_fusion != "none":  # FiLM 层
             B, C, H, W = h.shape
             beta, gamma = torch.split(
                 self.lang_proj4(langs).reshape(B, C * 2, 1, 1), [C, C], 1

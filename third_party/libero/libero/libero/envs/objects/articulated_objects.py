@@ -166,7 +166,7 @@ class ShortFridge(ArticulatedObject):
         else:
             return False
 
-    # Sample initial joint positions for random door open or door closed
+    # 为随机门打开或门关闭采样初始关节位置
 
 
 @register_object
@@ -240,7 +240,7 @@ class FlatStove(ArticulatedObject):
 
     def turn_on(self, qpos):
         if qpos >= min(self.object_properties["articulation"]["default_turnon_ranges"]):
-            # TODO: Set visualization sites to be true
+            # TODO: 将可视化站点设置为true
             self.object_properties["vis_site_names"]["burner"] = (
                 self.naming_prefix + "burner",
                 True,

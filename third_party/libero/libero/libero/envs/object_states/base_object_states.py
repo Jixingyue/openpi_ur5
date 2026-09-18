@@ -68,7 +68,7 @@ class ObjectState(BaseObjectState):
         return object_1.in_box(object_1_position, object_2_position)
 
     def get_joint_state(self):
-        # Return None if joint state does not exist
+        # 如果关节状态不存在则返回None
         joint_states = []
         for joint in self.env.get_object(self.object_name).joints:
             qpos_addr = self.env.sim.model.get_joint_qpos_addr(joint)
@@ -136,7 +136,7 @@ class ObjectState(BaseObjectState):
 
 class SiteObjectState(BaseObjectState):
     """
-    This is to make site based objects to have the same API as normal Object State.
+    这是为了使基于站点的对象具有与普通Object State相同的API。
     """
 
     def __init__(self, env, object_name, parent_name, is_fixture=False):
@@ -171,7 +171,7 @@ class SiteObjectState(BaseObjectState):
 
     def check_contact(self, other):
         """
-        There is no dynamics for site objects, so we return true all the time.
+        站点对象没有动力学，因此我们始终返回true。
         """
         return True
 

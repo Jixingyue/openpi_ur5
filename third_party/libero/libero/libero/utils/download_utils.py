@@ -1,5 +1,5 @@
 """
-Download functionalities adapted from Mandlekar et. al.: https://github.com/ARISE-Initiative/robomimic/blob/master/robomimic/utils/file_utils.py
+下载功能改编自 Mandlekar 等人：https://github.com/ARISE-Initiative/robomimic/blob/master/robomimic/utils/file_utils.py
 """
 import os
 import time
@@ -35,12 +35,12 @@ class DownloadProgressBar(tqdm):
 
 def url_is_alive(url):
     """
-    Checks that a given URL is reachable.
-    From https://gist.github.com/dehowell/884204.
-    Args:
-        url (str): url string
-    Returns:
-        is_alive (bool): True if url is reachable, False otherwise
+    检查给定的 URL 是否可达。
+    来自 https://gist.github.com/dehowell/884204。
+    参数:
+        url (str): url 字符串
+    返回:
+        is_alive (bool): 如果 url 可达则为 True，否则为 False
     """
     request = urllib.request.Request(url)
     # request.get_method = lambda: 'HEAD'
@@ -54,28 +54,28 @@ def url_is_alive(url):
 
 def download_url(url, download_dir, check_overwrite=True, is_zipfile=True):
     """
-    First checks that @url is reachable, then downloads the file
-    at that url into the directory specified by @download_dir.
-    Prints a progress bar during the download using tqdm.
-    Modified from https://github.com/tqdm/tqdm#hooks-and-callbacks, and
-    https://stackoverflow.com/a/53877507.
-    Args:
-        url (str): url string
-        download_dir (str): path to directory where file should be downloaded
-        check_overwrite (bool): if True, will sanity check the download fpath to make sure a file of that name
-            doesn't already exist there
+    首先检查 @url 是否可达，然后将该 url 处的文件
+    下载到由 @download_dir 指定的目录中。
+    使用 tqdm 在下载过程中打印进度条。
+    改编自 https://github.com/tqdm/tqdm#hooks-and-callbacks 以及
+    https://stackoverflow.com/a/53877507。
+    参数:
+        url (str): url 字符串
+        download_dir (str): 文件应下载到的目录路径
+        check_overwrite (bool): 如果为 True，将对下载路径进行合理性检查，以确保
+            该名称的文件不存在于那里
     """
 
-    # check if url is reachable. We need the sleep to make sure server doesn't reject subsequent requests
+    # 检查 url 是否可达。我们需要 sleep 来确保服务器不会拒绝后续请求
     assert url_is_alive(url), "@download_url got unreachable url: {}".format(url)
     time.sleep(0.5)
 
-    # infer filename from url link
+    # 从 url 链接推断文件名
     fname = url.split("/")[-1]
     file_to_write = os.path.join(download_dir, fname)
 
-    # If we're checking overwrite and the path already exists,
-    # we ask the user to verify that they want to overwrite the file
+    # 如果我们正在检查覆盖且路径已存在，
+    # 我们要求用户确认他们是否想要覆盖该文件
     user_response = None
     if check_overwrite and os.path.exists(file_to_write):
         user_response = input(
@@ -98,12 +98,12 @@ def download_url(url, download_dir, check_overwrite=True, is_zipfile=True):
 
 
 def libero_dataset_download(datasets="all", download_dir=None, check_overwrite=True):
-    """Download libero datasets
+    """下载 libero 数据集
 
-    Args:
-        datasets (str, optional): Specify which datasets to save. Defaults to "all", downloading all the datasets.
-        download_dir (str, optional): Target location for storing datasets. Defaults to None, using the default path.
-        check_overwrite (bool, optional): Check if overwriting datasets. Defaults to True.
+    参数:
+        datasets (str, optional): 指定要保存哪些数据集。默认为 "all"，下载所有数据集。
+        download_dir (str, optional): 存储数据集的目标位置。默认为 None，使用默认路径。
+        check_overwrite (bool, optional): 检查是否覆盖数据集。默认为 True。
     """
 
     if download_dir is None:
@@ -133,17 +133,17 @@ def libero_dataset_download(datasets="all", download_dir=None, check_overwrite=T
                 check_overwrite=check_overwrite,
             )
 
-            # (TODO): unzip the files
+            # (TODO)：解压文件
 
 
 def check_libero_dataset(download_dir=None):
-    """Check the integrity of the downloaded datasets.
+    """检查已下载数据集的完整性。
 
-    Args:
-        download_dir (str, optional): The path where datasets are stored. Defaults to None, using the default path.
+    参数:
+        download_dir (str, optional): 数据集存储的路径。默认为 None，使用默认路径。
 
-    Returns:
-        bool: True if the datasets are successfully downloaded, False otherwise.
+    返回:
+        bool: 如果数据集成功下载则为 True，否则为 False。
     """
     if download_dir is None:
         download_dir = get_libero_path("datasets")

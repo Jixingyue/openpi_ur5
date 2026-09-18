@@ -19,14 +19,14 @@ class VideoWriter:
         self.save()
 
     def append_image(self, img, idx=0):
-        """Directly append an image to the video."""
+        """直接将一张图像追加到视频中。"""
         if self.save_video:
             if idx not in self.image_buffer:
                 self.image_buffer[idx] = []
             self.image_buffer[idx].append(img)
 
     def append_obs(self, obs, done, idx=0, camera_name="agentview_image"):
-        """Append a camera observation to the video."""
+        """将一个相机观测值追加到视频中。"""
         if self.save_video:
             if idx not in self.image_buffer:
                 self.image_buffer[idx] = []

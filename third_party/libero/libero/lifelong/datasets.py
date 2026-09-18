@@ -8,11 +8,11 @@ from robomimic.utils.dataset import SequenceDataset
 from torch.utils.data import Dataset
 
 """
-    Helper function from Robomimic to read hdf5 demonstrations into sequence dataset
+    来自 Robomimic 的辅助函数，用于将 hdf5 演示读取为序列数据集
 
-    ISSUE: robomimic's SequenceDataset has two properties: seq_len and frame_stack,
-    we should in principle use seq_len, but the paddings of the two are different.
-    So that's why we currently use frame_stack instead of seq_len.
+    问题：robomimic 的 SequenceDataset 有两个属性：seq_len 和 frame_stack，
+    原则上我们应该使用 seq_len，但两者的填充方式不同。
+    这就是为什么我们目前使用 frame_stack 而不是 seq_len。
 """
 
 
@@ -46,15 +46,15 @@ def get_dataset(
         dataset_keys=["actions"],
         load_next_obs=False,
         frame_stack=frame_stack,
-        seq_length=seq_len,  # length-10 temporal sequences
+        seq_length=seq_len,  # 长度为 10 的时间序列
         pad_frame_stack=True,
-        pad_seq_length=True,  # pad last obs per trajectory to ensure all sequences are sampled
+        pad_seq_length=True,  # 填充每条轨迹的最后一个观测值，以确保所有序列都能被采样
         get_pad_mask=False,
         goal_mode=None,
-        hdf5_cache_mode=hdf5_cache_mode,  # cache dataset in memory to avoid repeated file i/o
+        hdf5_cache_mode=hdf5_cache_mode,  # 将数据集缓存在内存中以避免重复的文件 i/o
         hdf5_use_swmr=False,
         hdf5_normalize_obs=None,
-        filter_by_attribute=filter_key,  # can optionally provide a filter key here
+        filter_by_attribute=filter_key,  # 可以在这里可选地提供一个过滤键
     )
     return dataset, shape_meta
 
@@ -87,15 +87,15 @@ class GroupedTaskDataset(Dataset):
         self.lengths = [len(x) for x in self.sequence_datasets]
         self.task_group_size = len(self.sequence_datasets)
 
-        # create a map that maps the current idx of dataloader to original task data idx
-        # imagine we have task 1,2,3, with sizes 3,5,4, then the idx looks like
+        # 创建一个映射，将 dataloader 的当前 idx 映射到原始任务数据 idx
+        # 假设我们有任务 1,2,3，大小为 3,5,4，那么 idx 看起来如下
         # task-1  task-2  task-3
         #   0       1       2
         #   3       4       5
         #   6       7       8
         #           9       10
         #           11
-        # by doing so, when we concat the dataset, every task will have equal number of demos
+        # 这样做，当我们拼接数据集时，每个任务都将拥有相等数量的演示
         self.map_dict = {}
         sizes = np.array(self.lengths)
         row = 0

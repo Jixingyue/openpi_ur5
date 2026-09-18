@@ -14,7 +14,7 @@ from libero.lifelong.utils import *
 
 class Multitask(Sequential):
     """
-    The multitask learning baseline/upperbound.
+    多任务学习基线/上限。
     """
 
     def __init__(self, n_tasks, cfg, **policy_kwargs):
@@ -24,7 +24,7 @@ class Multitask(Sequential):
         self.start_task(-1)
         concat_dataset = ConcatDataset(datasets)
 
-        # learn on all tasks, only used in multitask learning
+        # 在所有任务上学习，仅用于多任务学习
         model_checkpoint_name = os.path.join(
             self.experiment_dir, f"multitask_model.pth"
         )
@@ -39,27 +39,27 @@ class Multitask(Sequential):
         )
 
         prev_success_rate = -1.0
-        best_state_dict = self.policy.state_dict()  # currently save the best model
+        best_state_dict = self.policy.state_dict()  # 目前保存最佳模型
 
-        # for evaluate how fast the agent learns on current task, this corresponds
-        # to the area under success rate curve on the new task.
+        # 用于评估智能体在当前任务上学习的速度，这对应于
+        # 新任务上成功率曲线下的面积。
         cumulated_counter = 0.0
         idx_at_best_succ = 0
         successes = []
         losses = []
 
-        # start training
+        # 开始训练
         for epoch in range(0, self.cfg.train.n_epochs + 1):
 
             t0 = time.time()
-            if epoch > 0 or (self.cfg.pretrain):  # update
+            if epoch > 0 or (self.cfg.pretrain):  # 更新
                 self.policy.train()
                 training_loss = 0.0
                 for (idx, data) in enumerate(train_dataloader):
                     loss = self.observe(data)
                     training_loss += loss
                 training_loss /= len(train_dataloader)
-            else:  # just evaluate the zero-shot performance on 0-th epoch
+            else:  # 仅在第 0 个 epoch 评估零样本（zero-shot）性能
                 training_loss = 0.0
                 for (idx, data) in enumerate(train_dataloader):
                     loss = self.eval_observe(data)
@@ -71,7 +71,7 @@ class Multitask(Sequential):
                 f"[info] Epoch: {epoch:3d} | train loss: {training_loss:5.2f} | time: {(t1-t0)/60:4.2f}"
             )
 
-            if epoch % self.cfg.eval.eval_every == 0:  # evaluate BC loss
+            if epoch % self.cfg.eval.eval_every == 0:  # 评估 BC 损失
                 t0 = time.time()
                 self.policy.eval()
 
@@ -81,10 +81,10 @@ class Multitask(Sequential):
                 torch_save_model(self.policy, model_checkpoint_name_ep, cfg=self.cfg)
                 losses.append(training_loss)
 
-                # for multitask learning, we provide an option whether to evaluate
-                # the agent once every eval_every epochs on all tasks, note that
-                # this can be quite computationally expensive. Nevertheless, we
-                # save the checkpoints, so users can always evaluate afterwards.
+                # 对于多任务学习，我们提供一个选项，是否每隔 eval_every
+                # 个 epoch 在所有任务上评估一次智能体，请注意
+                # 这可能在计算上相当昂贵。尽管如此，我们
+                # 保存了检查点，因此用户总是可以在事后进行评估。
                 if self.cfg.lifelong.eval_in_train:
                     success_rates = evaluate_multitask_training_success(
                         self.cfg, self, benchmark, all_tasks
@@ -116,12 +116,12 @@ class Multitask(Sequential):
             if self.scheduler is not None and epoch > 0:
                 self.scheduler.step()
 
-        # load the best policy if there is any
+        # 如果存在最佳策略，则加载它
         if self.cfg.lifelong.eval_in_train:
             self.policy.load_state_dict(torch_load_model(model_checkpoint_name)[0])
         self.end_task(concat_dataset, -1, benchmark)
 
-        # return the metrics regarding forward transfer
+        # 返回关于前向迁移（forward transfer）的指标
         losses = np.array(losses)
         successes = np.array(successes)
         auc_checkpoint_name = os.path.join(

@@ -15,12 +15,12 @@ def project(gxy: torch.Tensor, ger: torch.Tensor) -> torch.Tensor:
 
 def store_grad(params, grads, grad_dims):
     """
-    This stores parameter gradients of past tasks.
-    pp: parameters
-    grads: gradients
-    grad_dims: list with number of parameters per layers
+    存储过去任务的参数梯度。
+    pp：参数
+    grads：梯度
+    grad_dims：包含每层参数数量的列表
     """
-    # store the gradients
+    # 存储梯度
     grads.fill_(0.0)
     count = 0
     for param in params():
@@ -33,12 +33,12 @@ def store_grad(params, grads, grad_dims):
 
 def store_grad(params, grads, grad_dims):
     """
-    This stores parameter gradients of past tasks.
-    pp: parameters
-    grads: gradients
-    grad_dims: list with number of parameters per layers
+    存储过去任务的参数梯度。
+    pp：参数
+    grads：梯度
+    grad_dims：包含每层参数数量的列表
     """
-    # store the gradients
+    # 存储梯度
     grads.fill_(0.0)
     count = 0
     for param in params():
@@ -51,11 +51,11 @@ def store_grad(params, grads, grad_dims):
 
 def overwrite_grad(params, newgrad, grad_dims):
     """
-    This is used to overwrite the gradients with a new gradient
-    vector, whenever violations occur.
-    pp: parameters
-    newgrad: corrected gradient
-    grad_dims: list storing number of parameters at each layer
+    当发生违反时，它用于以一个新的梯度向量
+    覆盖原有梯度。
+    pp：参数
+    newgrad：修正后的梯度
+    grad_dims：存储每层参数数量的列表
     """
     count = 0
     for param in params():
@@ -69,8 +69,8 @@ def overwrite_grad(params, newgrad, grad_dims):
 
 class AGEM(ER):
     """
-    The Avaraged Gradient Episodic Memory algorithm.
-    See https://openreview.net/forum?id=Hkf2_sC5FX
+    平均梯度情景记忆（Averaged Gradient Episodic Memory）算法。
+    参见 https://openreview.net/forum?id=Hkf2_sC5FX
     """
 
     def __init__(self, n_tasks, cfg, **policy_kwargs):

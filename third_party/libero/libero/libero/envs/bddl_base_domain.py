@@ -27,7 +27,7 @@ TASK_MAPPING = {}
 
 
 def register_problem(target_class):
-    """We design the mapping to be case-INsensitive."""
+    """我们将映射设计为不区分大小写的。"""
     TASK_MAPPING[target_class.__name__.lower()] = target_class
 
 
@@ -36,7 +36,7 @@ import time
 
 class BDDLBaseDomain(SingleArmEnv):
     """
-    A base domain for parsing bddl files.
+    用于解析bddl文件的基础域。
     """
 
     def __init__(
@@ -78,39 +78,39 @@ class BDDLBaseDomain(SingleArmEnv):
         **kwargs,
     ):
         t0 = time.time()
-        # settings for table top (hardcoded since it's not an essential part of the environment)
+        # 桌面设置（硬编码，因为它不是环境的核心部分）
         self.workspace_offset = workspace_offset
-        # reward configuration
+        # 奖励配置
         self.reward_scale = reward_scale
         self.reward_shaping = reward_shaping
 
-        # whether to use ground-truth object states
+        # 是否使用真实物体状态
         self.use_object_obs = use_object_obs
 
-        # object placement initializer
+        # 物体放置初始化器
         self.placement_initializer = placement_initializer
         self.conditional_placement_initializer = None
         self.conditional_placement_on_objects_initializer = None
 
-        # object property initializer
+        # 物体属性初始化器
 
         if object_property_initializers is not None:
             self.object_property_initializers = object_property_initializers
         else:
             self.object_property_initializers = list()
 
-        # Keep track of movable objects in the tasks
+        # 跟踪任务中的可移动物体
         self.objects_dict = {}
-        # Kepp track of fixed objects in the tasks
+        # 跟踪任务中的固定物体
         self.fixtures_dict = {}
-        # Keep track of site objects in the tasks. site objects
-        # (instances of SiteObject)
+        # 跟踪任务中的站点对象。站点对象
+        # （SiteObject的实例）
         self.object_sites_dict = {}
-        # This is a dictionary that stores all the object states
-        # interface for all the objects
+        # 这是一个存储所有物体状态
+        # 接口的字典
         self.object_states_dict = {}
 
-        # For those that require visual feature changes, update the state every time step to avoid missing state changes. We keep track of this type of objects to make predicate checking more efficient.
+        # 对于那些需要视觉特征变化的物体，每个时间步都更新状态以避免遗漏状态变化。我们跟踪这类物体以使谓词检查更高效。
         self.tracking_object_states_change = []
 
         self.object_sites_dict = {}
@@ -164,51 +164,51 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def reward(self, action=None):
         """
-        Reward function for the task.
+        任务的奖励函数。
 
-        Sparse un-normalized reward:
+        稀疏未归一化奖励：
 
-            - a discrete reward of 1.0 is provided if the task succeeds.
+            - 如果任务成功，提供1.0的离散奖励。
 
-        Args:
-            action (np.array): [NOT USED]
+        参数:
+            action (np.array): [未使用]
 
-        Returns:
-            float: reward value
+        返回:
+            float: 奖励值
         """
         reward = 0.0
 
-        # sparse completion reward
+        # 稀疏完成奖励
         if self._check_success():
             reward = 1.0
 
-        # Scale reward if requested
+        # 如果请求，缩放奖励
         if self.reward_scale is not None:
             reward *= self.reward_scale / 1.0
 
         return reward
 
     def _assert_problem_name(self):
-        """Implement this to make sure the loaded bddl file has the correct problem name specification."""
+        """实现此方法以确保加载的bddl文件具有正确的问题名称规范。"""
         assert (
             self.parsed_problem["problem_name"] == self.__class__.__name__.lower()
         ), "Problem name mismatched"
 
     def _load_fixtures_in_arena(self, mujoco_arena):
         """
-        Load fixtures based on the bddl file description. Please override the method in the custom problem file.
+        根据bddl文件描述加载固定装置。请在自定义问题文件中重写此方法。
         """
         raise NotImplementedError
 
     def _load_objects_in_arena(self, mujoco_arena):
         """
-        Load movable objects based on the bddl file description
+        根据bddl文件描述加载可移动物体
         """
         raise NotImplementedError
 
     def _load_sites_in_arena(self, mujoco_arena):
         """
-        Load sites information from each object to keep track of them for predicate checking
+        从每个物体加载站点信息，以便跟踪它们进行谓词检查
         """
         raise NotImplementedError
 
@@ -255,7 +255,7 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def _load_custom_material(self):
         """
-        Define all the textures
+        定义所有纹理
         """
         # self.custom_material_dict = dict()
 
@@ -272,7 +272,7 @@ class BDDLBaseDomain(SingleArmEnv):
         # )
 
     def _setup_camera(self, mujoco_arena):
-        # Modify default agentview camera
+        # 修改默认agentview相机
         mujoco_arena.set_camera(
             camera_name="canonical_agentview",
             pos=[0.5386131746834771, 0.0, 1.4903500240372423],
@@ -296,10 +296,10 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def _load_model(self):
         """
-        Loads an xml model, puts it in self.model
+        加载xml模型，将其放入self.model中
         """
         super()._load_model()
-        # Adjust base pose accordingly
+        # 相应地调整基座位姿
 
         if self._arena_type == "table":
             xpos = self.robots[0].robot_model.base_xpos_offset["table"](
@@ -363,7 +363,7 @@ class BDDLBaseDomain(SingleArmEnv):
                 **self._arena_properties,
             )
 
-        # Arena always gets set to zero origin
+        # 场景始终设置为零原点
         mujoco_arena.set_origin([0, 0, 0])
 
         self._setup_camera(mujoco_arena)
@@ -383,7 +383,7 @@ class BDDLBaseDomain(SingleArmEnv):
         self.objects = list(self.objects_dict.values())
         self.fixtures = list(self.fixtures_dict.values())
 
-        # task includes arena, robot, and objects of interest
+        # 任务包括场景、机器人和感兴趣的物体
         self.model = ManipulationTask(
             mujoco_arena=mujoco_arena,
             mujoco_robots=[robot.robot_model for robot in self.robots],
@@ -405,13 +405,12 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def _setup_references(self):
         """
-        Sets up references to important components. A reference is typically an
-        index or a list of indices that point to the corresponding elements
-        in a flatten array, which is how MuJoCo stores physical simulation data.
+        设置对重要组件的引用。引用通常是一个索引或索引列表，
+        指向展平数组中的相应元素，这是MuJoCo存储物理仿真数据的方式。
         """
         super()._setup_references()
 
-        # Additional object references from this env
+        # 此环境的额外物体引用
         self.obj_body_id = dict()
 
         for (object_name, object_body) in self.objects_dict.items():
@@ -426,25 +425,25 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def _setup_observables(self):
         """
-        Sets up observables to be used for this environment. Creates object-based observables if enabled
+        设置用于此环境的可观测量。如果启用，创建基于物体的可观测量
 
-        Returns:
-            OrderedDict: Dictionary mapping observable names to its corresponding Observable object
+        返回:
+            OrderedDict: 将可观测量名称映射到其对应Observable对象的字典
         """
         observables = super()._setup_observables()
 
         observables["robot0_joint_pos"]._active = True
 
-        # low-level object information
+        # 低层物体信息
         if self.use_object_obs:
-            # Get robot prefix and define observables modality
+            # 获取机器人前缀并定义可观测量模态
             pf = self.robots[0].robot_model.naming_prefix
             sensors = []
             names = [s.__name__ for s in sensors]
 
-            # Also append handle qpos if we're using a locked drawer version with rotatable handle
+            # 如果使用带有可旋转把手的锁定抽屉版本，还要追加把手qpos
 
-            # Create observables
+            # 创建可观测量
             for name, s in zip(names, sensors):
                 observables[name] = Observable(
                     name=name,
@@ -493,17 +492,17 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def _create_obj_sensors(self, obj_name, modality="object"):
         """
-        Helper function to create sensors for a given object. This is abstracted in a separate function call so that we
-        don't have local function naming collisions during the _setup_observables() call.
+        为给定物体创建传感器的辅助函数。这被抽象为单独的函数调用，
+        以避免在_setup_observables()调用期间出现局部函数命名冲突。
 
-        Args:
-            obj_name (str): Name of object to create sensors for
-            modality (str): Modality to assign to all sensors
+        参数:
+            obj_name (str): 要创建传感器的物体名称
+            modality (str): 分配给所有传感器的模态
 
-        Returns:
+        返回:
             2-tuple:
-                sensors (list): Array of sensors for the given obj
-                names (list): array of corresponding observable names
+                sensors (list): 给定物体的传感器数组
+                names (list): 对应的可观测量名称数组
         """
         pf = self.robots[0].robot_model.naming_prefix
 
@@ -519,7 +518,7 @@ class BDDLBaseDomain(SingleArmEnv):
 
         @sensor(modality=modality)
         def obj_to_eef_pos(obs_cache):
-            # Immediately return default value if cache is empty
+            # 如果缓存为空，立即返回默认值
             if any(
                 [
                     name not in obs_cache
@@ -582,11 +581,11 @@ class BDDLBaseDomain(SingleArmEnv):
                 conditioned_initial_place_state_on_objects.append(state)
                 continue
 
-            # (Yifeng) Given that an object needs to have a certain "containing" region in order to hold the relation "In", we assume that users need to specify the containing region of the object already.
+            # (Yifeng) 鉴于物体需要具有某个“包含”区域才能保持“In”关系，我们假设用户需要已经指定物体的包含区域。
             if state[0] == "in" and state[2] in regions:
                 conditioned_initial_place_state_in_objects.append(state)
                 continue
-            # Check if the predicate is in the form of On(object, region)
+            # 检查谓词是否为On(object, region)的形式
             if state[0] == "on" and state[2] in regions:
                 object_name = state[1]
                 region_name = state[2]
@@ -600,7 +599,7 @@ class BDDLBaseDomain(SingleArmEnv):
                     conditioned_initial_place_state_on_sites.append(state)
                     continue
                 if self.is_fixture(object_name):
-                    # This is to place environment fixtures.
+                    # 这是用于放置环境固定装置的。
                     fixture_sampler = MultiRegionRandomSampler(
                         f"{object_name}_sampler",
                         mujoco_objects=self.fixtures_dict[object_name],
@@ -615,7 +614,7 @@ class BDDLBaseDomain(SingleArmEnv):
                     )
                     self.placement_initializer.append_sampler(fixture_sampler)
                 else:
-                    # This is to place movable objects.
+                    # 这是用于放置可移动物体的。
                     region_sampler = get_region_samplers(
                         problem_name, mapping_inv[target_name]
                     )(
@@ -629,7 +628,7 @@ class BDDLBaseDomain(SingleArmEnv):
                     )
                     self.placement_initializer.append_sampler(region_sampler)
             if state[0] in ["open", "close"]:
-                # If "open" is implemented, we assume "close" is also implemented
+                # 如果实现了“open”，我们假设也实现了“close”
                 if state[1] in self.object_states_dict and hasattr(
                     self.object_states_dict[state[1]], "set_joint"
                 ):
@@ -650,7 +649,7 @@ class BDDLBaseDomain(SingleArmEnv):
                     )
                     self.object_property_initializers.append(property_initializer)
             elif state[0] in ["turnon", "turnoff"]:
-                # If "turnon" is implemented, we assume "turnoff" is also implemented.
+                # 如果实现了“turnon”，我们假设也实现了“turnoff”。
                 if state[1] in self.object_states_dict and hasattr(
                     self.object_states_dict[state[1]], "set_joint"
                 ):
@@ -671,7 +670,7 @@ class BDDLBaseDomain(SingleArmEnv):
                     )
                     self.object_property_initializers.append(property_initializer)
 
-        # Place objects that are on sites
+        # 放置在站点上的物体
         for state in conditioned_initial_place_state_on_sites:
             object_name = state[1]
             region_name = state[2]
@@ -690,7 +689,7 @@ class BDDLBaseDomain(SingleArmEnv):
             self.conditional_placement_initializer.append_sampler(
                 sampler, {"reference": target_name, "site_name": region_name}
             )
-        # Place objects that are on other objects
+        # 放置在其他物体上的物体
         for state in conditioned_initial_place_state_on_objects:
             object_name = state[1]
             other_object_name = state[2]
@@ -707,7 +706,7 @@ class BDDLBaseDomain(SingleArmEnv):
             self.conditional_placement_on_objects_initializer.append_sampler(
                 sampler, {"reference": other_object_name}
             )
-        # Place objects inside some containing regions
+        # 放置在一些包含区域内部的物体
         for state in conditioned_initial_place_state_in_objects:
             object_name = state[1]
             region_name = state[2]
@@ -730,14 +729,14 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def _reset_internal(self):
         """
-        Resets simulation internal configurations.
+        重置仿真内部配置。
         """
         super()._reset_internal()
 
-        # Reset all object positions using initializer sampler if we're not directly loading from an xml
+        # 如果不是直接从xml加载，使用初始化采样器重置所有物体位置
         if not self.deterministic_reset:
 
-            # Sample from the placement initializer for all objects
+            # 从所有物体的放置初始化器中采样
             for object_property_initializer in self.object_property_initializers:
                 if isinstance(object_property_initializer, OpenCloseSampler):
                     joint_pos = object_property_initializer.sample()
@@ -751,7 +750,7 @@ class BDDLBaseDomain(SingleArmEnv):
                     )
                 else:
                     print("Warning!!! This sampler doesn't seem to be used")
-            # robosuite didn't provide api for this stepping. we manually do this stepping to increase the speed of resetting simulation.
+            # robosuite没有提供此步进的api。我们手动执行此步进以提高重置仿真的速度。
             mujoco.mj_step1(self.sim.model._model, self.sim.data._data)
 
             object_placements = self.placement_initializer.sample()
@@ -765,41 +764,40 @@ class BDDLBaseDomain(SingleArmEnv):
             )
             for obj_pos, obj_quat, obj in object_placements.values():
                 if obj.name not in list(self.fixtures_dict.keys()):
-                    # This is for movable object resetting
+                    # 这是用于可移动物体重置的
                     self.sim.data.set_joint_qpos(
                         obj.joints[-1],
                         np.concatenate([np.array(obj_pos), np.array(obj_quat)]),
                     )
                 else:
-                    # This is for fixture resetting
+                    # 这是用于固定装置重置的
                     body_id = self.sim.model.body_name2id(obj.root_body)
                     self.sim.model.body_pos[body_id] = obj_pos
                     self.sim.model.body_quat[body_id] = obj_quat
 
     def _check_success(self):
         """
-        This needs to match with the goal description from the bddl file
+        这需要与bddl文件中的目标描述匹配
 
-        Returns:
-            bool: True if drawer has been opened
+        返回:
+            bool: 如果抽屉已打开则为True
         """
         return False
 
     def visualize(self, vis_settings):
         """
-        In addition to super call, visualize gripper site proportional to the distance to the drawer handle.
+        除了父类调用外，还可视化与抽屉把手距离成比例的夹爪站点。
 
-        Args:
-            vis_settings (dict): Visualization keywords mapped to T/F, determining whether that specific
-                component should be visualized. Should have "grippers" keyword as well as any other relevant
-                options specified.
+        参数:
+            vis_settings (dict): 可视化关键字映射到T/F，确定是否应可视化该特定
+                组件。应包含“grippers”关键字以及任何其他指定的相关选项。
         """
-        # Run superclass method first
+        # 先运行父类方法
         super().visualize(vis_settings=vis_settings)
 
     def step(self, action):
         if self.action_dim == 4 and len(action) > 4:
-            # Convert OSC_POSITION action
+            # 转换OSC_POSITION动作
             action = np.array(action)
             action = np.concatenate((action[:3], action[-1:]), axis=-1)
 
@@ -819,7 +817,7 @@ class BDDLBaseDomain(SingleArmEnv):
         return reward, done, info
 
     def _post_process(self):
-        # Update some object states, such as light switching etc.
+        # 更新一些物体状态，例如灯光开关等
         for object_state in self.tracking_object_states_change:
             object_state.update_state()
 
@@ -830,10 +828,10 @@ class BDDLBaseDomain(SingleArmEnv):
 
     def is_fixture(self, object_name):
         """
-        Check if an object is defined as a fixture in the task
+        检查物体是否在任务中被定义为固定装置
 
-        Args:
-            object_name (str): The name string of the object in query
+        参数:
+            object_name (str): 查询物体的名称字符串
         """
         return object_name in list(self.fixtures_dict.keys())
 

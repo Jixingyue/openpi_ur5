@@ -17,7 +17,7 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
         else:
             self.table_full_size = (1.0, 1.2, 0.05)
         self.table_offset = (0, 0, 0.90)
-        # For z offset of environment fixtures
+        # 环境固定装置的 z 偏移
         self.z_offset = 0.01 - self.table_full_size[2]
         kwargs.update(
             {"robots": [f"Mounted{robot_name}" for robot_name in kwargs["robots"]]}
@@ -40,7 +40,7 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
         super().__init__(bddl_file_name, *args, **kwargs)
 
     def _load_fixtures_in_arena(self, mujoco_arena):
-        """Nothing extra to load in this simple problem."""
+        """在这个简单问题中没有额外需要加载的内容。"""
         for fixture_category in list(self.parsed_problem["fixtures"].keys()):
             if fixture_category == "table":
                 continue
@@ -60,7 +60,7 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
                 )
 
     def _load_sites_in_arena(self, mujoco_arena):
-        # Create site objects
+        # 创建 site 对象
         object_sites_dict = {}
         region_dict = self.parsed_problem["regions"]
         for object_region_name in list(region_dict.keys()):
@@ -92,12 +92,12 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
                     )
                 )
                 continue
-            # Otherwise the processing is consistent
+            # 否则处理过程是一致的
             for query_dict in [self.objects_dict, self.fixtures_dict]:
                 for (name, body) in query_dict.items():
                     try:
                         if "worldbody" not in list(body.__dict__.keys()):
-                            # This is a special case for CompositeObject, we skip this as this is very rare in our benchmark
+                            # 这是 CompositeObject 的一个特殊情况，我们跳过它，因为这在我们的基准测试中非常罕见
                             continue
                     except:
                         continue
@@ -122,19 +122,19 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
                                 )
         self.object_sites_dict = object_sites_dict
 
-        # Keep track of visualization objects
+        # 跟踪可视化对象
         for query_dict in [self.fixtures_dict, self.objects_dict]:
             for name, body in query_dict.items():
                 if body.object_properties["vis_site_names"] != {}:
                     self.visualization_sites_list.append(name)
 
     def _add_placement_initializer(self):
-        """Very simple implementation at the moment. Will need to upgrade for other relations later."""
+        """目前实现非常简单。以后需要为其他关系进行升级。"""
         super()._add_placement_initializer()
 
     def _check_success(self):
         """
-        Check if the goal is achieved. Consider conjunction goals at the moment
+        检查目标是否已实现。目前考虑合取（conjunction）目标
         """
         goal_state = self.parsed_problem["goal_state"]
         result = True
@@ -144,7 +144,7 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
 
     def _eval_predicate(self, state):
         if len(state) == 3:
-            # Checking binary logical predicates
+            # 检查二元逻辑谓词
             predicate_fn_name = state[0]
             object_1_name = state[1]
             object_2_name = state[2]
@@ -154,7 +154,7 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
                 self.object_states_dict[object_2_name],
             )
         elif len(state) == 2:
-            # Checking unary logical predicates
+            # 检查一元逻辑谓词
             predicate_fn_name = state[0]
             object_name = state[1]
             return eval_predicate_fn(
@@ -179,7 +179,7 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
                 if ((self.sim.model.site_rgba[vis_g_id][3] <= 0) and site_visible) or (
                     (self.sim.model.site_rgba[vis_g_id][3] > 0) and not site_visible
                 ):
-                    # We toggle the alpha value
+                    # 我们切换 alpha 值
                     self.sim.model.site_rgba[vis_g_id][3] = (
                         1 - self.sim.model.site_rgba[vis_g_id][3]
                     )
@@ -196,7 +196,7 @@ class Libero_Tabletop_Manipulation(BDDLBaseDomain):
             ],
         )
 
-        # For visualization purpose
+        # 用于可视化目的
         mujoco_arena.set_camera(
             camera_name="frontview", pos=[1.0, 0.0, 1.48], quat=[0.56, 0.43, 0.43, 0.56]
         )

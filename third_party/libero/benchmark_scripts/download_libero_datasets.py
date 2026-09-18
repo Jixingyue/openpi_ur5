@@ -26,19 +26,19 @@ def main():
 
     args = parse_args()
 
-    # Ask users to specify the download directory of datasets
+    # 请用户指定数据集的下载目录
     os.makedirs(args.download_dir, exist_ok=True)
     print(f"Datasets downloaded to {args.download_dir}")
     print(f"Downloading {args.datasets} datasets")
 
-    # If not, download
+    # 如果不存在，则下载
     download_utils.libero_dataset_download(
         download_dir=args.download_dir, datasets=args.datasets
     )
 
-    # (TODO) If datasets exist, check if datasets are the same as benchmark
+    # (TODO) 如果数据集已存在，检查数据集是否与基准测试一致
 
-    # Check if datasets exist first
+    # 首先检查数据集是否存在
     download_utils.check_libero_dataset(download_dir=args.download_dir)
 
 

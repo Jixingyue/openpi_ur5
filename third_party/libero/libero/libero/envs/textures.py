@@ -1,7 +1,7 @@
 import os
 from libero.libero import get_libero_path
 
-# This is the mapping from texture name to texture file name. Currently this has some duplication with style.py. We will fix this in the future.
+# 这是从纹理名称到纹理文件名的映射。目前这与style.py有一些重复。我们将在未来修复这个问题。
 
 TEXTURE_MAPPING = {
     "Porcelain_Floor_1": "grigia_caldera_porcelain_floor.png",
@@ -47,7 +47,7 @@ def get_texture_file_list(type=None, texture_path="../"):
     path = os.path.join(texture_path, "textures")
     for (key, value) in sorted(TEXTURE_MAPPING.items()):
         if type.lower() == "table":
-            # Only those with "table" in the name or no other element name will be included
+            # 只包含名称中含有“table”或没有其他元素名称的纹理
             if "table" in key.lower() or (
                 "wall" not in key.lower() and "floor" not in key.lower()
             ):

@@ -36,11 +36,11 @@ from libero.lifelong.utils import (
 
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(hydra_cfg):
-    # preprocessing
+    # 预处理
     yaml_config = OmegaConf.to_yaml(hydra_cfg)
     cfg = EasyDict(yaml.safe_load(yaml_config))
 
-    # print configs to terminal
+    # 将配置打印到终端
     pp = pprint.PrettyPrinter(indent=2)
     pp.pprint(cfg)
 
@@ -50,10 +50,10 @@ def main(hydra_cfg):
     pp.pprint("Available policies:")
     pp.pprint(get_policy_list())
 
-    # control seed
+    # 控制种子
     control_seed(cfg.seed)
 
-    # prepare lifelong learning
+    # 准备终身学习
     cfg.folder = cfg.folder or get_libero_path("datasets")
     cfg.bddl_folder = cfg.bddl_folder or get_libero_path("bddl_files")
     cfg.init_states_folder = cfg.init_states_folder or get_libero_path("init_states")
@@ -61,13 +61,13 @@ def main(hydra_cfg):
     benchmark = get_benchmark(cfg.benchmark_name)(cfg.data.task_order_index)
     n_manip_tasks = benchmark.n_tasks
 
-    # prepare datasets from the benchmark
+    # 从基准测试准备数据集
     manip_datasets = []
     descriptions = []
     shape_meta = None
 
     for i in range(n_manip_tasks):
-        # currently we assume tasks from same benchmark have the same shape_meta
+        # 目前我们假设来自同一基准测试的任务具有相同的 shape_meta
         try:
             task_i_dataset, shape_meta = get_dataset(
                 dataset_path=os.path.join(
@@ -83,7 +83,7 @@ def main(hydra_cfg):
             )
             print(f"[error] {e}")
         print(os.path.join(cfg.folder, benchmark.get_task_demonstration(i)))
-        # add language to the vision dataset, hence we call vl_dataset
+        # 将语言添加到视觉数据集，因此我们称之为 vl_dataset
         task_description = benchmark.get_task(i).language
         descriptions.append(task_description)
         manip_datasets.append(task_i_dataset)
@@ -92,13 +92,13 @@ def main(hydra_cfg):
     benchmark.set_task_embs(task_embs)
 
     gsz = cfg.data.task_group_size
-    if gsz == 1:  # each manipulation task is its own lifelong learning task
+    if gsz == 1:  # 每个操作任务本身就是一个终身学习任务
         datasets = [
             SequenceVLDataset(ds, emb) for (ds, emb) in zip(manip_datasets, task_embs)
         ]
         n_demos = [data.n_demos for data in datasets]
         n_sequences = [data.total_num_sequences for data in datasets]
-    else:  # group gsz manipulation tasks into a lifelong task, currently not used
+    else:  # 将 gsz 个操作任务组合为一个终身任务，目前未使用
         assert (
             n_manip_tasks % gsz == 0
         ), f"[error] task_group_size does not divide n_tasks"
@@ -115,7 +115,7 @@ def main(hydra_cfg):
                 [x.total_num_sequences for x in dataset.sequence_datasets]
             )
 
-    n_tasks = n_manip_tasks // gsz  # number of lifelong learning tasks
+    n_tasks = n_manip_tasks // gsz  # 终身学习任务的数量
     print("\n=================== Lifelong Benchmark Information  ===================")
     print(f" Name: {benchmark.name}")
     print(f" # Tasks: {n_manip_tasks // gsz}")
@@ -127,7 +127,7 @@ def main(hydra_cfg):
     print(" # sequences: " + " ".join(f"({x})" for x in n_sequences))
     print("=======================================================================\n")
 
-    # prepare experiment and update the config
+    # 准备实验并更新配置
     create_experiment_dir(cfg)
     cfg.shape_meta = shape_meta
 
@@ -136,28 +136,28 @@ def main(hydra_cfg):
         wandb.run.name = cfg.experiment_name
 
     result_summary = {
-        "L_conf_mat": np.zeros((n_manip_tasks, n_manip_tasks)),  # loss confusion matrix
-        "S_conf_mat": np.zeros((n_manip_tasks, n_manip_tasks)),  # success confusion matrix
-        "L_fwd": np.zeros((n_manip_tasks,)),  # loss AUC, how fast the agent learns
-        "S_fwd": np.zeros((n_manip_tasks,)),  # success AUC, how fast the agent succeeds
+        "L_conf_mat": np.zeros((n_manip_tasks, n_manip_tasks)),  # 损失混淆矩阵
+        "S_conf_mat": np.zeros((n_manip_tasks, n_manip_tasks)),  # 成功率混淆矩阵
+        "L_fwd": np.zeros((n_manip_tasks,)),  # 损失 AUC，智能体学习的速度
+        "S_fwd": np.zeros((n_manip_tasks,)),  # 成功率 AUC，智能体取得成功的速度
     }
 
     if cfg.eval.save_sim_states:
-        # for saving the evaluate simulation states, so we can replay them later
+        # 用于保存评估仿真状态，以便我们稍后回放它们
         for k in range(n_manip_tasks):
-            for p in range(k + 1):  # for testing task p when the agent learns to task k
+            for p in range(k + 1):  # 用于在智能体学习到任务 k 时测试任务 p
                 result_summary[f"k{k}_p{p}"] = [[] for _ in range(cfg.eval.n_eval)]
             for e in range(
                 cfg.train.n_epochs + 1
-            ):  # for testing task k at the e-th epoch when the agent learns on task k
+            ):  # 用于在智能体在任务 k 上学习时，在第 e 个 epoch 测试任务 k
                 if e % cfg.eval.eval_every == 0:
                     result_summary[f"k{k}_e{e//cfg.eval.eval_every}"] = [
                         [] for _ in range(cfg.eval.n_eval)
                     ]
 
-    # define lifelong algorithm
+    # 定义终身学习算法
     algo = safe_device(get_algo_class(cfg.lifelong.algo)(n_tasks, cfg), cfg.device)
-    if cfg.pretrain_model_path != "":  # load a pretrained model if there is any
+    if cfg.pretrain_model_path != "":  # 如果存在预训练模型，则加载它
         try:
             algo.policy.load_state_dict(torch_load_model(cfg.pretrain_model_path)[0])
         except:
@@ -170,7 +170,7 @@ def main(hydra_cfg):
     GFLOPs, MParams = compute_flops(algo, datasets[0], cfg)
     print(f"[info] policy has {GFLOPs:.1f} GFLOPs and {MParams:.1f} MParams\n")
 
-    # save the experiment config file, so we can resume or replay later
+    # 保存实验配置文件，以便我们稍后恢复或回放
     with open(os.path.join(cfg.experiment_dir, "config.json"), "w") as f:
         json.dump(cfg, f, cls=NpEncoder, indent=4)
 
@@ -181,7 +181,7 @@ def main(hydra_cfg):
         result_summary["L_fwd"][-1] = l_fwd
         result_summary["S_fwd"][-1] = s_fwd
 
-        # evalute on all seen tasks at the end if eval.eval is true
+        # 如果 eval.eval 为 true，则在最后在所有已见任务上进行评估
         if cfg.eval.eval:
             L = evaluate_loss(cfg, algo, benchmark, datasets)
             S = evaluate_success(
@@ -223,7 +223,7 @@ def main(hydra_cfg):
             result_summary["L_fwd"][i] = l_fwd
             t1 = time.time()
 
-            # evalute on all seen tasks at the end of learning each task
+            # 在学习每个任务结束时在所有已见任务上进行评估
             if cfg.eval.eval:
                 L = evaluate_loss(cfg, algo, benchmark, datasets[: i + 1])
                 t2 = time.time()
@@ -266,7 +266,7 @@ def main(hydra_cfg):
 
 
 if __name__ == "__main__":
-    # Set the multiprocessing start method to 'spawn'
+    # 将多进程启动方法设为 'spawn'
     if multiprocessing.get_start_method(allow_none=True) != "spawn":  
         multiprocessing.set_start_method("spawn", force=True)
     main()

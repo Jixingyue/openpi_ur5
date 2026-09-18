@@ -6,15 +6,15 @@ from robosuite.utils.mjcf_utils import xml_path_completion
 
 class MountedPanda(ManipulatorModel):
     """
-    Panda is a sensitive single-arm robot designed by Franka.
-    Args:
-        idn (int or str): Number or some other unique identification string for this robot instance
+    Panda是由Franka设计的敏感单臂机器人。
+    参数:
+        idn (int or str): 此机器人实例的编号或其他唯一标识字符串
     """
 
     def __init__(self, idn=0):
         super().__init__(xml_path_completion("robots/panda/robot.xml"), idn=idn)
 
-        # Set joint damping
+        # 设置关节阻尼
         self.set_joint_attribute(
             attrib="damping", values=np.array((0.1, 0.1, 0.1, 0.1, 0.1, 0.01, 0.01))
         )

@@ -14,7 +14,7 @@ SCENE_DICT = {}
 
 def register_mu(scene_type="general"):
     def _func(target_class):
-        """For reusing initial conditions easily, we register each pre-defined initial conditions in a dictionary."""
+        """为了便于重用初始条件，我们将每个预定义的初始条件注册到一个字典中。"""
         key = "_".join(
             re.sub(r"([A-Z])", r" \1", target_class.__name__).split()
         ).lower()
@@ -95,7 +95,7 @@ class InitialSceneTemplates:
         return list(self.movable_object_dict)
 
     def define_regions(self):
-        """Override this method to define the layout of a scene."""
+        """重写该方法以定义场景的布局。"""
         raise NotImplementedError
 
     def get_region_dict(
@@ -106,7 +106,7 @@ class InitialSceneTemplates:
         region_half_len=0.02,
         yaw_rotation=(0.0, 0.0),
     ):
-        """This is a function that creates a default region with rectangular shape."""
+        """这是一个创建矩形形状默认区域的函数。"""
         if target_name is None:
             target_name = self.workspace_name
         region_key_value = {

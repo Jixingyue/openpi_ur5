@@ -13,16 +13,16 @@ from libero.libero.envs.arenas.style import get_texture_filename
 
 class StudyTableArena(Arena):
     """
-    Workspace that contains an empty table.
+    包含一张空桌子的工作空间。
 
 
-    Args:
-        table_full_size (3-tuple): (L,W,H) full dimensions of the table
-        table_friction (3-tuple): (sliding, torsional, rolling) friction parameters of the table
-        table_offset (3-tuple): (x,y,z) offset from center of arena when placing table.
-            Note that the z value sets the upper limit of the table
-        has_legs (bool): whether the table has legs or not
-        xml (str): xml file to load arena
+    参数:
+        table_full_size (3-tuple): (L,W,H) 桌子的完整尺寸
+        table_friction (3-tuple): (滑动, 扭转, 滚动) 桌子的摩擦参数
+        table_offset (3-tuple): (x,y,z) 放置桌子时相对于场景中心的偏移。
+            注意z值设置桌子的上限
+        has_legs (bool): 桌子是否有腿
+        xml (str): 加载场景的xml文件
     """
 
     def __init__(
@@ -66,7 +66,7 @@ class StudyTableArena(Arena):
         texwall.set("file", wall_file)
 
     def configure_location(self):
-        """Configures correct locations for this arena"""
+        """为此场景配置正确的位置"""
         self.floor.set("pos", array_to_string(self.bottom_pos))
 
         self.table_body.set("pos", array_to_string(self.center_pos))
@@ -79,39 +79,39 @@ class StudyTableArena(Arena):
             "pos", array_to_string(np.array([0, 0, self.table_half_size[2]]))
         )
 
-        # If we're not using legs, set their size to 0
+        # 如果我们不使用桌子腿，将其大小设为0
         if not self.has_legs:
             for leg in self.table_legs_visual:
                 leg.set("rgba", array_to_string([1, 0, 0, 0]))
                 leg.set("size", array_to_string([0.0001, 0.0001]))
         else:
-            # Otherwise, set leg locations appropriately
+            # 否则，适当设置桌腿位置
             delta_x = [0.1, -0.1, -0.1, 0.1]
             delta_y = [0.1, 0.1, -0.1, -0.1]
             for leg, dx, dy in zip(self.table_legs_visual, delta_x, delta_y):
-                # If x-length of table is less than a certain length, place leg in the middle between ends
-                # Otherwise we place it near the edge
+                # 如果桌子的x长度小于某个长度，将桌腿放在两端中间
+                # 否则我们将其放在边缘附近
                 x = 0
                 if self.table_half_size[0] > abs(dx * 2.0):
                     x += np.sign(dx) * self.table_half_size[0] - dx
-                # Repeat the same process for y
+                # 对y重复相同的过程
                 y = 0
                 if self.table_half_size[1] > abs(dy * 2.0):
                     y += np.sign(dy) * self.table_half_size[1] - dy
-                # Get z value
+                # 获取z值
                 z = (self.table_offset[2] - self.table_half_size[2]) / 2.0
-                # Set leg position
+                # 设置桌腿位置
                 leg.set("pos", array_to_string([x, y, -z]))
-                # Set leg size
+                # 设置桌腿大小
                 leg.set("size", array_to_string([0.025, z]))
                 # leg.set("rgba", array_to_string([0, 0, 0, 0]))
 
     @property
     def table_top_abs(self):
         """
-        Grabs the absolute position of table top
+        获取桌面顶部的绝对位置
 
-        Returns:
-            np.array: (x,y,z) table position
+        返回:
+            np.array: (x,y,z) 桌子位置
         """
         return string_to_array(self.floor.get("pos")) + self.table_offset

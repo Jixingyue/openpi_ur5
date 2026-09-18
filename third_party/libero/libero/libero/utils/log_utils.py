@@ -3,7 +3,7 @@ from termcolor import colored
 
 
 class LiberoColorFormatter(logging.Formatter):
-    """This color format is for logging user's project wise information"""
+    """这种颜色格式用于记录用户项目级别的信息"""
 
     format_str = "[Project %(levelname)s] "
     debug_message_str = "%(message)s (%(filename)s:%(lineno)d)"
@@ -35,6 +35,6 @@ ProjectDefaultLogger(logger_config_path, project_name)
 
 
 def get_project_logger(project_name="libero", logger_config_path=None):
-    """This function returns a logger that follows the deoxys convention"""
+    """该函数返回一个遵循 deoxys 约定的日志记录器"""
     logger = logging.getLogger(project_name)
     return logger

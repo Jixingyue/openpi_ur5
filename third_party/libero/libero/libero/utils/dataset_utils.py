@@ -4,20 +4,20 @@ import json
 
 
 def get_dataset_info(dataset_path, filter_key=None, verbose=True):
-    # extract demonstration list from file
+    # 从文件中提取演示列表
     all_filter_keys = None
     f = h5py.File(dataset_path, "r")
     if filter_key is not None:
-        # use the demonstrations from the filter key instead
+        # 改为使用过滤键中的演示
         print("NOTE: using filter key {}".format(filter_key))
         demos = sorted(
             [elem.decode("utf-8") for elem in np.array(f["mask/{}".format(filter_key)])]
         )
     else:
-        # use all demonstrations
+        # 使用所有演示
         demos = sorted(list(f["data"].keys()))
 
-        # extract filter key information
+        # 提取过滤键信息
         if "mask" in f:
             all_filter_keys = {}
             for fk in f["mask"]:
@@ -26,11 +26,11 @@ def get_dataset_info(dataset_path, filter_key=None, verbose=True):
                 )
                 all_filter_keys[fk] = fk_demos
 
-    # put demonstration list in increasing episode order
+    # 将演示列表按递增的回合顺序排列
     inds = np.argsort([int(elem[5:]) for elem in demos])
     demos = [demos[i] for i in inds]
 
-    # extract length of each trajectory in the file
+    # 提取文件中每条轨迹的长度
     traj_lengths = []
     action_min = np.inf
     action_max = -np.inf
@@ -43,7 +43,7 @@ def get_dataset_info(dataset_path, filter_key=None, verbose=True):
     problem_info = json.loads(f["data"].attrs["problem_info"])
 
     language_instruction = "".join(problem_info["language_instruction"])
-    # report statistics on the data
+    # 报告关于数据的统计信息
     print("")
     print("total transitions: {}".format(np.sum(traj_lengths)))
     print("total trajectories: {}".format(traj_lengths.shape[0]))

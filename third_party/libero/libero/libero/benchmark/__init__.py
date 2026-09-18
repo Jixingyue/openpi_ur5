@@ -12,7 +12,7 @@ BENCHMARK_MAPPING = {}
 
 
 def register_benchmark(target_class):
-    """We design the mapping to be case-INsensitive."""
+    """我们将映射设计为不区分大小写的。"""
     BENCHMARK_MAPPING[target_class.__name__.lower()] = target_class
 
 
@@ -145,7 +145,7 @@ class Benchmark(abc.ABC):
         assert (
             0 <= i and i < self.n_tasks
         ), f"[error] task number {i} is outer of range {self.n_tasks}"
-        # this path is relative to the datasets folder
+        # 此路径相对于datasets文件夹
         demo_path = f"{self.tasks[i].problem_folder}/{self.tasks[i].name}_demo.hdf5"
         return demo_path
 

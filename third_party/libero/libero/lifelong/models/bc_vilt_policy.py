@@ -13,7 +13,7 @@ from libero.lifelong.models.bc_transformer_policy import ExtraModalityTokens
 
 ###############################################################################
 #
-# A ViLT Policy
+# 一个 ViLT 策略
 #
 ###############################################################################
 
@@ -26,15 +26,15 @@ def reshape_transform(tensor, h, w):
 
 class BCViLTPolicy(BasePolicy):
     """
-    Input: (o_{t-H}, ... , o_t)
-    Output: a_t or distribution of a_t
+    输入：(o_{t-H}, ... , o_t)
+    输出：a_t 或 a_t 的分布
     """
 
     def __init__(self, cfg, shape_meta):
         super().__init__(cfg, shape_meta)
         policy_cfg = cfg.policy
 
-        ### 1. encode image
+        ### 1. 编码图像
         embed_size = policy_cfg.embed_size
 
         transformer_input_sizes = []
@@ -54,13 +54,13 @@ class BCViLTPolicy(BasePolicy):
         )
         num_patches = sum([x.num_patches for x in self.encoders])
 
-        ### 2. encode language (spatial)
+        ### 2. 编码语言（空间）
         policy_cfg.language_encoder.network_kwargs.output_size = embed_size
         self.language_encoder_spatial = eval(policy_cfg.language_encoder.network)(
             **policy_cfg.language_encoder.network_kwargs
         )
 
-        ### 3. define positional embeddings, modality embeddings, and spatial token for summary
+        ### 3. 定义位置嵌入、模态嵌入以及用于汇总的空间 token
         spatial_token = nn.Parameter(torch.randn(1, 1, embed_size))  # SPATIAL_TOKEN
         patch_pos_embed = nn.Parameter(torch.randn(1, num_patches, embed_size))
         modality_embed = nn.Parameter(
@@ -71,14 +71,14 @@ class BCViLTPolicy(BasePolicy):
         self.register_parameter("patch_pos_embed", patch_pos_embed)
         self.register_parameter("modality_embed", modality_embed)
 
-        # for selecting modality embed
+        # 用于选择模态嵌入
         modality_idx = []
         for i, x in enumerate(self.encoders):
             modality_idx += [i] * x.num_patches
-        modality_idx += [modality_idx[-1] + 1]  # for sentence embedding
+        modality_idx += [modality_idx[-1] + 1]  # 用于句子嵌入
         self.modality_idx = torch.LongTensor(modality_idx).to(cfg.device)
 
-        ### 4. define spatial transformer
+        ### 4. 定义空间 transformer
         self.spatial_transformer = TransformerDecoder(
             input_size=embed_size,
             num_layers=policy_cfg.spatial_transformer_num_layers,
@@ -94,7 +94,7 @@ class BCViLTPolicy(BasePolicy):
         else:
             temporal_embed_size = embed_size
 
-        ### 5. encode extra information (e.g. gripper, joint_state)
+        ### 5. 编码额外信息（例如夹爪、joint_state）
         self.extra_encoder = ExtraModalityTokens(
             use_joint=cfg.data.use_joint,
             use_gripper=cfg.data.use_gripper,
@@ -105,13 +105,13 @@ class BCViLTPolicy(BasePolicy):
         )
         num_extra = self.extra_encoder.num_extra
 
-        ### 6. encode language (temporal), this will also act as the TEMPORAL_TOKEN
+        ### 6. 编码语言（时序），这也将充当 TEMPORAL_TOKEN
         policy_cfg.language_encoder.network_kwargs.output_size = temporal_embed_size
         self.language_encoder_temporal = eval(policy_cfg.language_encoder.network)(
             **policy_cfg.language_encoder.network_kwargs
         )
 
-        ### 7. define temporal transformer
+        ### 7. 定义时序 transformer
         policy_cfg.temporal_position_encoding.network_kwargs.input_size = (
             temporal_embed_size
         )
@@ -140,13 +140,13 @@ class BCViLTPolicy(BasePolicy):
         self.latent_queue = []
         self.max_seq_len = policy_cfg.transformer_max_seq_len
 
-        ### 8. reshape transform for attention visualization
+        ### 8. 用于注意力可视化的 reshape 变换
         self.reshape_transform = lambda x: reshape_transform(
             x, self.encoders[0].h, self.encoders[1].w
         )
 
     def spatial_encode(self, data):
-        # 1. encode image
+        # 1. 编码图像
         img_encoded = []
         for img_name in self.image_encoders.keys():
             img_encoded.append(
@@ -156,41 +156,41 @@ class BCViLTPolicy(BasePolicy):
                     ),
                     "b t c h w -> b t (h w) c",
                 )
-            )  # add img_h: (B, T, num_patches, E)
+            )  # 添加 img_h: (B, T, num_patches, E)
         img_encoded = torch.cat(img_encoded, -2)  # (B, T, 2*num_patches, E)
         img_encoded += self.patch_pos_embed.unsqueeze(0)  # (B, T, 2*num_patches, E)
         B, T = img_encoded.shape[:2]
 
-        # 2. encode task_emb
+        # 2. 编码 task_emb
         text_encoded = self.language_encoder_spatial(data)  # (B, E)
         text_encoded = text_encoded.view(B, 1, 1, -1).expand(
             -1, T, -1, -1
         )  # (B, T, 1, E)
 
-        # 3. concat img + text embs then add modality embeddings
+        # 3. 拼接 img + text 嵌入，然后添加模态嵌入
         img_text_encoded = torch.cat(
             [img_encoded, text_encoded], -2
         )  # (B, T, 2*num_patches+1, E)
         img_text_encoded += self.modality_embed[
             None, :, self.modality_idx, :
-        ]  # same as above
+        ]  # 与上面相同
 
-        # 4. add spatial token
+        # 4. 添加空间 token
         spatial_token = self.spatial_token.unsqueeze(0).expand(
             B, T, -1, -1
         )  # (B, T, 1, E)
         encoded = torch.cat([spatial_token, img_text_encoded], -2)  # (B, T, :, E)
 
-        # 5. pass through transformer
+        # 5. 传入 transformer
         encoded = rearrange(encoded, "b t n e -> (b t) n e")  # (B*T, :, E)
         out = self.spatial_transformer(encoded)
-        out = out[:, 0]  # extract spatial token as summary at o_t
+        out = out[:, 0]  # 提取空间 token 作为 o_t 处的汇总
         out = self.spatial_down_sample(out).view(B, T, 1, -1)  # (B, T, 1, E')
 
-        # 6. encode extra
+        # 6. 编码额外信息
         extra = self.extra_encoder(data["obs"])  # (B, T, num_extra, E')
 
-        # 7. encode language, treat it as action token
+        # 7. 编码语言，将其视为动作 token
         text_encoded_ = self.language_encoder_temporal(data)  # (B, E')
         text_encoded_ = text_encoded_.view(B, 1, 1, -1).expand(
             -1, T, -1, -1

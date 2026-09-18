@@ -11,7 +11,7 @@ from libero.lifelong.utils import *
 
 class EWC(Sequential):
     """
-    The Elastic Weight Consolidation policy.
+    弹性权重固化（Elastic Weight Consolidation）策略。
     """
 
     def __init__(self, n_tasks, cfg, **policy_kwargs):

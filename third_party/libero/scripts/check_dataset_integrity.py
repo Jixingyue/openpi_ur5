@@ -1,4 +1,4 @@
-"""A script to check if any demonstration dataset does not have the exact number of demonstration trajectories"""
+"""一个用于检查是否有任何演示数据集不具备准确数量演示轨迹的脚本"""
 
 from pathlib import Path
 import h5py

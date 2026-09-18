@@ -13,20 +13,20 @@ DIR = os.path.dirname(__file__)
 
 def postprocess_model_xml(xml_str, cameras_dict={}):
     """
-    This function postprocesses the model.xml collected from a MuJoCo demonstration
-    in order to make sure that the STL files can be found.
+    该函数对从 MuJoCo 演示中收集的 model.xml 进行后处理，
+    以确保 STL 文件能够被找到。
 
-    Args:
-        xml_str (str): Mujoco sim demonstration XML file as string
+    参数:
+        xml_str (str): 以字符串形式表示的 Mujoco 仿真演示 XML 文件
 
-    Returns:
-        str: Post-processed xml file as string
+    返回:
+        str: 以字符串形式表示的后处理后的 xml 文件
     """
 
     path = os.path.split(robosuite.__file__)[0]
     path_split = path.split("/")
 
-    # replace mesh and texture file paths
+    # 替换 mesh 和纹理文件路径
     tree = ET.fromstring(xml_str)
     root = tree
     asset = root.find("asset")
@@ -43,7 +43,7 @@ def postprocess_model_xml(xml_str, cameras_dict={}):
             continue
         ind = max(
             loc for loc, val in enumerate(old_path_split) if val == "robosuite"
-        )  # last occurrence index
+        )  # 最后一次出现的索引
         new_path_split = path_split + old_path_split[ind + 1 :]
         new_path = "/".join(new_path_split)
         elem.set("file", new_path)

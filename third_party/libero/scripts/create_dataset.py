@@ -59,7 +59,7 @@ def main():
     problem_name = problem_info["problem_name"]
     language_instruction = problem_info["language_instruction"]
 
-    # list of all demonstrations episodes
+    # 所有演示回合的列表
     demos = list(f["data"].keys())
 
     bddl_file_name = f["data"].attrs["bddl_file_name"]
@@ -126,7 +126,7 @@ def main():
         print("Playing back random episode... (press ESC to quit)")
 
         # # select an episode randomly
-        # read the model xml, using the metadata stored in the attribute for this episode
+        # 读取模型 xml，使用该回合属性中存储的元数据
         model_xml = f["data/{}".format(ep)].attrs["model_file"]
         reset_success = False
         while not reset_success:
@@ -141,7 +141,7 @@ def main():
         if not args.use_camera_obs:
             env.viewer.set_camera(0)
 
-        # load the flattened mujoco states
+        # 加载展平的 mujoco 状态
         states = f["data/{}/states".format(ep)][()]
         actions = np.array(f["data/{}/actions".format(ep)][()])
 
@@ -177,7 +177,7 @@ def main():
             obs, reward, done, info = env.step(action)
 
             if j < num_actions - 1:
-                # ensure that the actions deterministically lead to the same recorded states
+                # 确保这些动作确定性地导致与记录的相同状态
                 state_playback = env.sim.get_state().flatten()
                 # assert(np.all(np.equal(states[j + 1], state_playback)))
                 err = np.linalg.norm(states[j + 1] - state_playback)
@@ -187,8 +187,8 @@ def main():
                         f"[warning] playback diverged by {err:.2f} for ep {ep} at step {j}"
                     )
 
-            # Skip recording because the force sensor is not stable in
-            # the beginning
+            # 跳过记录，因为力传感器在开始时
+            # 不稳定
             if j < cap_index:
                 continue
 
@@ -222,7 +222,7 @@ def main():
             else:
                 env.render()
 
-        # end of one trajectory
+        # 一条轨迹的结束
         states = states[valid_index]
         actions = actions[valid_index]
         dones = np.zeros(len(actions)).astype(np.uint8)

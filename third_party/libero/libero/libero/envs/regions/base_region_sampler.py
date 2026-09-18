@@ -13,26 +13,26 @@ import robosuite.utils.transform_utils as T
 
 class MultiRegionRandomSampler(ObjectPositionSampler):
     """
-    Places all objects within the table uniformly random.
-    Args:
-        name (str): Name of this sampler.
-        mujoco_objects (None or MujocoObject or list of MujocoObject): single model or list of MJCF object models
-        x_range (2-array of float): Specify the (min, max) relative x_range used to uniformly place objects
-        y_range (2-array of float): Specify the (min, max) relative y_range used to uniformly place objects
+    将所有物体在桌面内均匀随机放置。
+    参数:
+        name (str): 此采样器的名称。
+        mujoco_objects (None or MujocoObject or list of MujocoObject): 单个模型或MJCF对象模型列表
+        x_range (2-array of float): 指定用于均匀放置物体的(min, max)相对x范围
+        y_range (2-array of float): 指定用于均匀放置物体的(min, max)相对y范围
         rotation (None or float or Iterable):
-            :`None`: Add uniform random random rotation
-            :`Iterable (a,b)`: Uniformly randomize rotation angle between a and b (in radians)
-            :`value`: Add fixed angle rotation
-        rotation_axis (str): Can be 'x', 'y', or 'z'. Axis about which to apply the requested rotation
+            :`None`: 添加均匀随机旋转
+            :`Iterable (a,b)`: 在a和b之间均匀随机化旋转角度（弧度）
+            :`value`: 添加固定角度旋转
+        rotation_axis (str): 可以是'x'、'y'或'z'。应用请求旋转的轴
         ensure_object_boundary_in_range (bool):
-            :`True`: The center of object is at position:
+            :`True`: 物体中心位于:
                  [uniform(min x_range + radius, max x_range - radius)], [uniform(min x_range + radius, max x_range - radius)]
             :`False`:
                 [uniform(min x_range, max x_range)], [uniform(min x_range, max x_range)]
-        ensure_valid_placement (bool): If True, will check for correct (valid) object placements
-        reference_pos (3-array): global (x,y,z) position relative to which sampling will occur
-        z_offset (float): Add a small z-offset to placements. This is useful for fixed objects
-            that do not move (i.e. no free joint) to place them above the table.
+        ensure_valid_placement (bool): 如果为True，将检查正确（有效）的物体放置
+        reference_pos (3-array): 采样将相对于此全局(x,y,z)位置进行
+        z_offset (float): 为放置添加小的z偏移。这对于不移动的固定物体很有用
+            （即没有自由关节）以将它们放置在桌面上方。
     """
 
     def __init__(
@@ -67,11 +67,11 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_x(self, object_horizontal_radius):
         """
-        Samples the x location for a given object
-        Args:
-            object_horizontal_radius (float): Radius of the object currently being sampled for
-        Returns:
-            float: sampled x position
+        为给定物体采样x位置
+        参数:
+            object_horizontal_radius (float): 当前正在采样的物体的半径
+        返回:
+            float: 采样的x位置
         """
         minimum, maximum = self.x_ranges[self.idx]
         if self.ensure_object_boundary_in_range:
@@ -81,11 +81,11 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_y(self, object_horizontal_radius):
         """
-        Samples the y location for a given object
-        Args:
-            object_horizontal_radius (float): Radius of the object currently being sampled for
-        Returns:
-            float: sampled y position
+        为给定物体采样y位置
+        参数:
+            object_horizontal_radius (float): 当前正在采样的物体的半径
+        返回:
+            float: 采样的y位置
         """
         minimum, maximum = self.y_ranges[self.idx]
         if self.ensure_object_boundary_in_range:
@@ -95,11 +95,11 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_quat(self):
         """
-        Samples the orientation for a given object
-        Returns:
-            np.array: sampled (r,p,y) euler angle orientation
-        Raises:
-            ValueError: [Invalid rotation axis]
+        为给定物体采样方向
+        返回:
+            np.array: 采样的(r,p,y)欧拉角方向
+        异常:
+            ValueError: [无效的旋转轴]
         """
         if self.rotation is None:
             rot_angle = np.random.uniform(high=2 * np.pi, low=0)
@@ -117,7 +117,7 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
         elif self.rotation_axis == "z":
             return np.array([np.cos(rot_angle / 2), 0, 0, np.sin(rot_angle / 2)])
         else:
-            # Invalid axis specified, raise error
+            # 指定了无效的轴，抛出错误
             raise ValueError(
                 "Invalid rotation axis specified. Must be 'x', 'y', or 'z'. Got: {}".format(
                     self.rotation_axis
@@ -126,25 +126,24 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
     def sample(self, fixtures=None, reference=None, on_top=True):
         """
-        Uniformly sample relative to this sampler's reference_pos or @reference (if specified).
-        Args:
-            fixtures (dict): dictionary of current object placements in the scene as well as any other relevant
-                obstacles that should not be in contact with newly sampled objects. Used to make sure newly
-                generated placements are valid. Should be object names mapped to (pos, quat, MujocoObject)
-            reference (str or 3-tuple or None): if provided, sample relative placement. Can either be a string, which
-                corresponds to an existing object found in @fixtures, or a direct (x,y,z) value. If None, will sample
-                relative to this sampler's `'reference_pos'` value.
-            on_top (bool): if True, sample placement on top of the reference object. This corresponds to a sampled
-                z-offset of the current sampled object's bottom_offset + the reference object's top_offset
-                (if specified)
-        Return:
-            dict: dictionary of all object placements, mapping object_names to (pos, quat, obj), including the
-                placements specified in @fixtures. Note quat is in (w,x,y,z) form
-        Raises:
-            RandomizationError: [Cannot place all objects]
-            AssertionError: [Reference object name does not exist, invalid inputs]
+        相对于此采样器的reference_pos或@reference（如果指定）进行均匀采样。
+        参数:
+            fixtures (dict): 当前场景中物体放置的字典，以及不应与新采样物体接触的任何其他相关
+                障碍物。用于确保新生成的放置是有效的。应该是物体名称映射到(pos, quat, MujocoObject)
+            reference (str or 3-tuple or None): 如果提供，采样相对放置。可以是字符串，
+                对应@fixtures中找到的现有物体，或直接的(x,y,z)值。如果为None，将相对于
+                此采样器的`'reference_pos'`值进行采样。
+            on_top (bool): 如果为True，在参考物体顶部采样放置。这对应于当前采样的
+                物体的bottom_offset + 参考物体的top_offset的z偏移
+                （如果指定）
+        返回:
+            dict: 所有物体放置的字典，将object_names映射到(pos, quat, obj)，包括
+                @fixtures中指定的放置。注意quat为(w,x,y,z)格式
+        异常:
+            RandomizationError: [无法放置所有物体]
+            AssertionError: [参考物体名称不存在，无效输入]
         """
-        # Standardize inputs
+        # 标准化输入
         placed_objects = {} if fixtures is None else copy(fixtures)
         if reference is None:
             base_offset = self.reference_pos
@@ -166,9 +165,9 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
                 base_offset
             )
 
-        # Sample pos and quat for all objects assigned to this sampler
+        # 为分配给此采样器的所有物体采样位置和四元数
         for obj in self.mujoco_objects:
-            # First make sure the currently sampled object hasn't already been sampled
+            # 首先确保当前采样的物体尚未被采样
             assert (
                 obj.name not in placed_objects
             ), "Object '{}' has already been sampled!".format(obj.name)
@@ -184,7 +183,7 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
                 if on_top:
                     object_z -= bottom_offset[-1]
 
-                # objects cannot overlap
+                # 物体不能重叠
                 location_valid = True
                 if self.ensure_valid_placement:
                     for (x, y, z), _, other_obj in placed_objects.values():
@@ -198,14 +197,14 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
                             break
 
                 if location_valid:
-                    # random rotation
+                    # 随机旋转
                     quat = self._sample_quat()
 
-                    # multiply this quat by the object's initial rotation if it has the attribute specified
+                    # 如果物体具有指定的属性，将此四元数与物体的初始旋转相乘
                     if hasattr(obj, "init_quat"):
                         quat = quat_multiply(quat, obj.init_quat)
 
-                    # location is valid, put the object down
+                    # 位置有效，放下物体
                     pos = (object_x, object_y, object_z)
                     placed_objects[obj.name] = (pos, quat, obj)
                     success = True
@@ -219,26 +218,26 @@ class MultiRegionRandomSampler(ObjectPositionSampler):
 
 class SiteRegionRandomSampler(ObjectPositionSampler):
     """
-    Places all objects on a site
-    Args:
-        name (str): Name of this sampler.
-        mujoco_objects (None or MujocoObject or list of MujocoObject): single model or list of MJCF object models
-        x_range (2-array of float): Specify the (min, max) relative x_range used to uniformly place objects
-        y_range (2-array of float): Specify the (min, max) relative y_range used to uniformly place objects
+    将所有物体放置在一个 site 上
+    参数:
+        name (str): 此采样器的名称。
+        mujoco_objects (None or MujocoObject or list of MujocoObject): 单个模型或 MJCF 对象模型列表
+        x_range (2-array of float): 指定用于均匀放置物体的相对 (min, max) x_range
+        y_range (2-array of float): 指定用于均匀放置物体的相对 (min, max) y_range
         rotation (None or float or Iterable):
-            :`None`: Add uniform random random rotation
-            :`Iterable (a,b)`: Uniformly randomize rotation angle between a and b (in radians)
-            :`value`: Add fixed angle rotation
-        rotation_axis (str): Can be 'x', 'y', or 'z'. Axis about which to apply the requested rotation
+            :`None`: 添加均匀随机旋转
+            :`Iterable (a,b)`: 在 a 和 b 之间均匀随机化旋转角度（以弧度为单位）
+            :`value`: 添加固定角度旋转
+        rotation_axis (str): 可以为 'x'、'y' 或 'z'。应用所请求旋转时所绕的轴
         ensure_object_boundary_in_range (bool):
-            :`True`: The center of object is at position:
+            :`True`: 物体的中心位于位置：
                  [uniform(min x_range + radius, max x_range - radius)], [uniform(min x_range + radius, max x_range - radius)]
             :`False`:
                 [uniform(min x_range, max x_range)], [uniform(min x_range, max x_range)]
-        ensure_valid_placement (bool): If True, will check for correct (valid) object placements
-        reference_pos (3-array): global (x,y,z) position relative to which sampling will occur
-        z_offset (float): Add a small z-offset to placements. This is useful for fixed objects
-            that do not move (i.e. no free joint) to place them above the table.
+        ensure_valid_placement (bool): 如果为 True，将检查物体放置的正确（有效）性
+        reference_pos (3-array): 采样将相对于其进行的全局 (x,y,z) 位置
+        z_offset (float): 为放置添加一个小的 z 偏移。这对于不移动的固定物体
+            （即没有自由关节）非常有用，以将它们放置在桌面上方。
     """
 
     def __init__(
@@ -274,11 +273,11 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_x(self, object_horizontal_radius):
         """
-        Samples the x location for a given object
-        Args:
-            object_horizontal_radius (float): Radius of the object currently being sampled for
-        Returns:
-            float: sampled x position
+        为给定物体采样x位置
+        参数:
+            object_horizontal_radius (float): 当前正在采样的物体的半径
+        返回:
+            float: 采样的x位置
         """
         minimum, maximum = self.x_ranges[self.idx]
         if self.ensure_object_boundary_in_range:
@@ -288,11 +287,11 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_y(self, object_horizontal_radius):
         """
-        Samples the y location for a given object
-        Args:
-            object_horizontal_radius (float): Radius of the object currently being sampled for
-        Returns:
-            float: sampled y position
+        为给定物体采样y位置
+        参数:
+            object_horizontal_radius (float): 当前正在采样的物体的半径
+        返回:
+            float: 采样的y位置
         """
         minimum, maximum = self.y_ranges[self.idx]
         if self.ensure_object_boundary_in_range:
@@ -302,12 +301,12 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
 
     def _sample_quat(self):
         """
-        Samples the orientation for a given object
-        Add multiple rotation options
-        Returns:
-            np.array: sampled (r,p,y) euler angle orientation
-        Raises:
-            ValueError: [Invalid rotation axis]
+        为给定物体采样方向
+        添加多种旋转选项
+        返回:
+            np.array: 采样的(r,p,y)欧拉角方向
+        异常:
+            ValueError: [无效的旋转轴]
         """
         if self.rotation is None:
             rot_angle = np.random.uniform(high=2 * np.pi, low=0)
@@ -315,7 +314,7 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
             rot_angle = np.random.uniform(
                 high=max(self.rotation), low=min(self.rotation)
             )
-        # multiple rotations
+        # 多种旋转
         elif isinstance(self.rotation, dict):
             quat = np.array(
                 [0.0, 0.0, 0.0, 1.0]
@@ -346,7 +345,7 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
         else:
             rot_angle = self.rotation
 
-        # Return angle based on axis requested
+        # 根据请求的轴返回角度
         if self.rotation_axis == "x":
             return np.array([np.sin(rot_angle / 2), 0, 0, np.cos(rot_angle / 2)])
         elif self.rotation_axis == "y":
@@ -354,7 +353,7 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
         elif self.rotation_axis == "z":
             return np.array([0, 0, np.sin(rot_angle / 2), np.cos(rot_angle / 2)])
         else:
-            # Invalid axis specified, raise error
+            # 指定了无效的轴，抛出错误
             raise ValueError(
                 "Invalid rotation axis specified. Must be 'x', 'y', or 'z'. Got: {}".format(
                     self.rotation_axis
@@ -363,25 +362,24 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
 
     def sample(self, sim, fixtures=None, reference=None, site_name="", on_top=True):
         """
-        Uniformly sample relative to this sampler's reference_pos or @reference (if specified).
-        Args:
-            fixtures (dict): dictionary of current object placements in the scene as well as any other relevant
-                obstacles that should not be in contact with newly sampled objects. Used to make sure newly
-                generated placements are valid. Should be object names mapped to (pos, quat, MujocoObject)
-            reference (str or 3-tuple or None): if provided, sample relative placement. Can either be a string, which
-                corresponds to an existing object found in @fixtures, or a direct (x,y,z) value. If None, will sample
-                relative to this sampler's `'reference_pos'` value.
-            on_top (bool): if True, sample placement on top of the reference object. This corresponds to a sampled
-                z-offset of the current sampled object's bottom_offset + the reference object's top_offset
-                (if specified)
-        Return:
-            dict: dictionary of all object placements, mapping object_names to (pos, quat, obj), including the
-                placements specified in @fixtures. Note quat is in (w,x,y,z) form
-        Raises:
-            RandomizationError: [Cannot place all objects]
-            AssertionError: [Reference object name does not exist, invalid inputs]
+        相对于此采样器的reference_pos或@reference（如果指定）进行均匀采样。
+        参数:
+            fixtures (dict): 当前场景中物体放置的字典，以及不应与新采样物体接触的任何其他相关
+                障碍物。用于确保新生成的放置是有效的。应该是物体名称映射到(pos, quat, MujocoObject)
+            reference (str or 3-tuple or None): 如果提供，采样相对放置。可以是字符串，
+                对应@fixtures中找到的现有物体，或直接的(x,y,z)值。如果为None，将相对于
+                此采样器的`'reference_pos'`值进行采样。
+            on_top (bool): 如果为True，在参考物体顶部采样放置。这对应于当前采样的
+                物体的bottom_offset + 参考物体的top_offset的z偏移
+                （如果指定）
+        返回:
+            dict: 所有物体放置的字典，将object_names映射到(pos, quat, obj)，包括
+                @fixtures中指定的放置。注意quat为(w,x,y,z)格式
+        异常:
+            RandomizationError: [无法放置所有物体]
+            AssertionError: [参考物体名称不存在，无效输入]
         """
-        # Standardize inputs
+        # 标准化输入
         placed_objects = {} if fixtures is None else copy(fixtures)
         if reference is None:
             base_offset = self.reference_pos
@@ -403,9 +401,9 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
                 base_offset
             )
 
-        # Sample pos and quat for all objects assigned to this sampler
+        # 为分配给此采样器的所有物体采样位置和四元数
         for obj in self.mujoco_objects:
-            # First make sure the currently sampled object hasn't already been sampled
+            # 首先确保当前采样的物体尚未被采样
             assert (
                 obj.name not in placed_objects
             ), "Object '{}' has already been sampled!".format(obj.name)
@@ -424,7 +422,7 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
                 if on_top:
                     object_z -= bottom_offset[-1]
 
-                # objects cannot overlap
+                # 物体不能重叠
                 location_valid = True
                 if self.ensure_valid_placement:
                     for (x, y, z), _, other_obj in placed_objects.values():
@@ -438,13 +436,13 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
                             break
 
                 if location_valid:
-                    # random rotation
+                    # 随机旋转
                     quat = self._sample_quat()
-                    # multiply this quat by the object's initial rotation if it has the attribute specified
+                    # 如果物体具有指定的属性，将此四元数与物体的初始旋转相乘
                     if hasattr(obj, "init_quat"):
                         quat = quat_multiply(quat, obj.init_quat)
 
-                    # location is valid, put the object down
+                    # 位置有效，放下物体
                     pos = (object_x, object_y, object_z)
                     placed_objects[obj.name] = (pos, quat, obj)
                     success = True
@@ -458,26 +456,26 @@ class SiteRegionRandomSampler(ObjectPositionSampler):
 
 class InSiteRegionRandomSampler(SiteRegionRandomSampler):
     """
-    Places an object inside a site
-    Args:
-        name (str): Name of this sampler.
-        mujoco_objects (None or MujocoObject or list of MujocoObject): single model or list of MJCF object models
-        x_range (2-array of float): Specify the (min, max) relative x_range used to uniformly place objects
-        y_range (2-array of float): Specify the (min, max) relative y_range used to uniformly place objects
+    将物体放置在站点内部
+    参数:
+        name (str): 此采样器的名称。
+        mujoco_objects (None or MujocoObject or list of MujocoObject): 单个模型或MJCF对象模型列表
+        x_range (2-array of float): 指定用于均匀放置物体的(min, max)相对x范围
+        y_range (2-array of float): 指定用于均匀放置物体的(min, max)相对y范围
         rotation (None or float or Iterable):
-            :`None`: Add uniform random random rotation
-            :`Iterable (a,b)`: Uniformly randomize rotation angle between a and b (in radians)
-            :`value`: Add fixed angle rotation
-        rotation_axis (str): Can be 'x', 'y', or 'z'. Axis about which to apply the requested rotation
+            :`None`: 添加均匀随机旋转
+            :`Iterable (a,b)`: 在a和b之间均匀随机化旋转角度（弧度）
+            :`value`: 添加固定角度旋转
+        rotation_axis (str): 可以是'x'、'y'或'z'。应用请求旋转的轴
         ensure_object_boundary_in_range (bool):
-            :`True`: The center of object is at position:
+            :`True`: 物体中心位于:
                  [uniform(min x_range + radius, max x_range - radius)], [uniform(min x_range + radius, max x_range - radius)]
             :`False`:
                 [uniform(min x_range, max x_range)], [uniform(min x_range, max x_range)]
-        ensure_valid_placement (bool): If True, will check for correct (valid) object placements
-        reference_pos (3-array): global (x,y,z) position relative to which sampling will occur
-        z_offset (float): Add a small z-offset to placements. This is useful for fixed objects
-            that do not move (i.e. no free joint) to place them above the table.
+        ensure_valid_placement (bool): 如果为True，将检查正确（有效）的物体放置
+        reference_pos (3-array): 采样将相对于此全局(x,y,z)位置进行
+        z_offset (float): 为放置添加小的z偏移。这对于不移动的固定物体很有用
+            （即没有自由关节）以将它们放置在桌面上方。
     """
 
     def __init__(
@@ -509,12 +507,12 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
 
     def _sample_quat(self):
         """
-        Samples the orientation for a given object
-        Add multiple rotation options
-        Returns:
-            np.array: sampled (r,p,y) euler angle orientation
-        Raises:
-            ValueError: [Invalid rotation axis]
+        为给定物体采样方向
+        添加多种旋转选项
+        返回:
+            np.array: 采样的(r,p,y)欧拉角方向
+        异常:
+            ValueError: [无效的旋转轴]
         """
         if self.rotation is None:
             rot_angle = np.random.uniform(high=2 * np.pi, low=0)
@@ -522,7 +520,7 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
             rot_angle = np.random.uniform(
                 high=max(self.rotation), low=min(self.rotation)
             )
-        # multiple rotations
+        # 多种旋转
         elif isinstance(self.rotation, dict):
             quat = np.array(
                 [0.0, 0.0, 0.0, 1.0]
@@ -553,7 +551,7 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
         else:
             rot_angle = self.rotation
 
-        # Return angle based on axis requested
+        # 根据请求的轴返回角度
         if self.rotation_axis == "x":
             return np.array([np.sin(rot_angle / 2), 0, 0, np.cos(rot_angle / 2)])
         elif self.rotation_axis == "y":
@@ -561,7 +559,7 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
         elif self.rotation_axis == "z":
             return np.array([0, 0, np.sin(rot_angle / 2), np.cos(rot_angle / 2)])
         else:
-            # Invalid axis specified, raise error
+            # 指定了无效的轴，抛出错误
             raise ValueError(
                 "Invalid rotation axis specified. Must be 'x', 'y', or 'z'. Got: {}".format(
                     self.rotation_axis
@@ -570,25 +568,24 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
 
     def sample(self, sim, fixtures=None, reference=None, site_name="", on_top=True):
         """
-        Uniformly sample relative to this sampler's reference_pos or @reference (if specified).
-        Args:
-            fixtures (dict): dictionary of current object placements in the scene as well as any other relevant
-                obstacles that should not be in contact with newly sampled objects. Used to make sure newly
-                generated placements are valid. Should be object names mapped to (pos, quat, MujocoObject)
-            reference (str or 3-tuple or None): if provided, sample relative placement. Can either be a string, which
-                corresponds to an existing object found in @fixtures, or a direct (x,y,z) value. If None, will sample
-                relative to this sampler's `'reference_pos'` value.
-            on_top (bool): if True, sample placement on top of the reference object. This corresponds to a sampled
-                z-offset of the current sampled object's bottom_offset + the reference object's top_offset
-                (if specified)
-        Return:
-            dict: dictionary of all object placements, mapping object_names to (pos, quat, obj), including the
-                placements specified in @fixtures. Note quat is in (w,x,y,z) form
-        Raises:
-            RandomizationError: [Cannot place all objects]
-            AssertionError: [Reference object name does not exist, invalid inputs]
+        相对于此采样器的reference_pos或@reference（如果指定）进行均匀采样。
+        参数:
+            fixtures (dict): 当前场景中物体放置的字典，以及不应与新采样物体接触的任何其他相关
+                障碍物。用于确保新生成的放置是有效的。应该是物体名称映射到(pos, quat, MujocoObject)
+            reference (str or 3-tuple or None): 如果提供，采样相对放置。可以是字符串，
+                对应@fixtures中找到的现有物体，或直接的(x,y,z)值。如果为None，将相对于
+                此采样器的`'reference_pos'`值进行采样。
+            on_top (bool): 如果为True，在参考物体顶部采样放置。这对应于当前采样的
+                物体的bottom_offset + 参考物体的top_offset的z偏移
+                （如果指定）
+        返回:
+            dict: 所有物体放置的字典，将object_names映射到(pos, quat, obj)，包括
+                @fixtures中指定的放置。注意quat为(w,x,y,z)格式
+        异常:
+            RandomizationError: [无法放置所有物体]
+            AssertionError: [参考物体名称不存在，无效输入]
         """
-        # Standardize inputs
+        # 标准化输入
         placed_objects = {} if fixtures is None else copy(fixtures)
         if reference is None:
             base_offset = self.reference_pos
@@ -610,9 +607,9 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
                 base_offset
             )
 
-        # Sample pos and quat for all objects assigned to this sampler
+        # 为分配给此采样器的所有物体采样位置和四元数
         for obj in self.mujoco_objects:
-            # First make sure the currently sampled object hasn't already been sampled
+            # 首先确保当前采样的物体尚未被采样
             assert (
                 obj.name not in placed_objects
             ), "Object '{}' has already been sampled!".format(obj.name)
@@ -631,7 +628,7 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
                 if on_top:
                     object_z -= bottom_offset[-1]
 
-                # objects cannot overlap
+                # 物体不能重叠
                 location_valid = True
                 if self.ensure_valid_placement:
                     for (x, y, z), _, other_obj in placed_objects.values():
@@ -645,14 +642,14 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
                             break
 
                 if location_valid:
-                    # random rotation
+                    # 随机旋转
                     quat = self._sample_quat()
 
-                    # multiply this quat by the object's initial rotation if it has the attribute specified
+                    # 如果物体具有指定的属性，将此四元数与物体的初始旋转相乘
                     if hasattr(obj, "init_quat"):
                         quat = quat_multiply(quat, obj.init_quat)
 
-                    # location is valid, put the object down
+                    # 位置有效，放下物体
                     pos = (object_x, object_y, object_z)
                     placed_objects[obj.name] = (pos, quat, obj)
                     success = True
@@ -669,15 +666,14 @@ class InSiteRegionRandomSampler(SiteRegionRandomSampler):
 
 class SiteSequentialCompositeSampler(ObjectPositionSampler):
     """
-    Samples position for each object sequentially. Allows chaining
-    multiple placement initializers together - so that object locations can
-    be sampled on top of other objects or relative to other object placements.
-    Args:
-        name (str): Name of this sampler.
+    顺序地为每个物体采样位置。允许将多个放置初始化器链接在一起 -
+    以便可以在其他物体顶部或相对于其他物体放置采样物体位置。
+    参数:
+        name (str): 此采样器的名称。
     """
 
     def __init__(self, name):
-        # Samplers / args will be filled in later
+        # 采样器/参数将在稍后填充
         self.samplers = collections.OrderedDict()
         self.sample_args = collections.OrderedDict()
 
@@ -685,15 +681,15 @@ class SiteSequentialCompositeSampler(ObjectPositionSampler):
 
     def append_sampler(self, sampler, sample_args=None):
         """
-        Adds a new placement initializer with corresponding @sampler and arguments
-        Args:
-            sampler (ObjectPositionSampler): sampler to add
-            sample_args (None or dict): If specified, should be additional arguments to pass to @sampler's sample()
-                call. Should map corresponding sampler's arguments to values (excluding @fixtures argument)
-        Raises:
-            AssertionError: [Object name in samplers]
+        添加新的放置初始化器及其对应的@sampler和参数
+        参数:
+            sampler (ObjectPositionSampler): 要添加的采样器
+            sample_args (None or dict): 如果指定，应该是传递给@sampler的sample()
+                调用的额外参数。应将对应采样器的参数映射到值（不包括@fixtures参数）
+        异常:
+            AssertionError: [采样器中的物体名称]
         """
-        # Verify that all added mujoco objects haven't already been added, and add to this sampler's objects dict
+        # 验证所有添加的mujoco物体尚未被添加，并添加到此采样器的对象字典中
         for obj in sampler.mujoco_objects:
             assert (
                 obj not in self.mujoco_objects
@@ -704,9 +700,9 @@ class SiteSequentialCompositeSampler(ObjectPositionSampler):
 
     def hide(self, mujoco_objects):
         """
-        Helper method to remove an object from the workspace.
-        Args:
-            mujoco_objects (MujocoObject or list of MujocoObject): Object(s) to hide
+        从工作空间移除物体的辅助方法。
+        参数:
+            mujoco_objects (MujocoObject or list of MujocoObject): 要隐藏的物体
         """
         sampler = UniformRandomSampler(
             name="HideSampler",
@@ -723,7 +719,7 @@ class SiteSequentialCompositeSampler(ObjectPositionSampler):
 
     def add_objects(self, mujoco_objects):
         """
-        Override super method to make sure user doesn't call this (all objects should implicitly belong to sub-samplers)
+        重写父类方法以确保用户不会调用此方法（所有物体应隐式属于子采样器）
         """
         raise AttributeError(
             "add_objects() should not be called for SequentialCompsiteSamplers!"
@@ -731,12 +727,12 @@ class SiteSequentialCompositeSampler(ObjectPositionSampler):
 
     def add_objects_to_sampler(self, sampler_name, mujoco_objects):
         """
-        Adds specified @mujoco_objects to sub-sampler with specified @sampler_name.
-        Args:
-            sampler_name (str): Existing sub-sampler name
-            mujoco_objects (MujocoObject or list of MujocoObject): Object(s) to add
+        将指定的@mujoco_objects添加到具有指定@sampler_name的子采样器。
+        参数:
+            sampler_name (str): 现有子采样器名称
+            mujoco_objects (MujocoObject or list of MujocoObject): 要添加的物体
         """
-        # First verify that all mujoco objects haven't already been added, and add to this sampler's objects dict
+        # 首先验证所有mujoco物体尚未被添加，并添加到此采样器的对象字典中
         mujoco_objects = (
             [mujoco_objects]
             if isinstance(mujoco_objects, MujocoObject)
@@ -747,17 +743,17 @@ class SiteSequentialCompositeSampler(ObjectPositionSampler):
                 obj not in self.mujoco_objects
             ), f"Object '{obj.name}' already has sampler associated with it!"
             self.mujoco_objects.append(obj)
-        # Make sure sampler_name exists
+        # 确保sampler_name存在
         assert sampler_name in self.samplers.keys(), (
             "Invalid sub-sampler specified, valid options are: {}, "
             "requested: {}".format(self.samplers.keys(), sampler_name)
         )
-        # Add the mujoco objects to the requested sub-sampler
+        # 将mujoco物体添加到请求的子采样器
         self.samplers[sampler_name].add_objects(mujoco_objects)
 
     def reset(self):
         """
-        Resets this sampler. In addition to base method, iterates over all sub-samplers and resets them
+        重置此采样器。除了基础方法外，还遍历所有子采样器并重置它们
         """
         super().reset()
         for sampler in self.samplers.values():
@@ -765,40 +761,38 @@ class SiteSequentialCompositeSampler(ObjectPositionSampler):
 
     def sample(self, sim, fixtures=None, reference=None, on_top=True):
         """
-        Sample from each placement initializer sequentially, in the order
-        that they were appended.
-        Args:
-            fixtures (dict): dictionary of current object placements in the scene as well as any other relevant
-                obstacles that should not be in contact with newly sampled objects. Used to make sure newly
-                generated placements are valid. Should be object names mapped to (pos, quat, MujocoObject)
-            reference (str or 3-tuple or None): if provided, sample relative placement. This will override each
-                sampler's @reference argument if not already specified. Can either be a string, which
-                corresponds to an existing object found in @fixtures, or a direct (x,y,z) value. If None, will sample
-                relative to this sampler's `'reference_pos'` value.
-            on_top (bool): if True, sample placement on top of the reference object. This will override each
-                sampler's @on_top argument if not already specified. This corresponds to a sampled
-                z-offset of the current sampled object's bottom_offset + the reference object's top_offset
-                (if specified)
-        Return:
-            dict: dictionary of all object placements, mapping object_names to (pos, quat, obj), including the
-                placements specified in @fixtures. Note quat is in (w,x,y,z) form
-        Raises:
-            RandomizationError: [Cannot place all objects]
+        顺序地从每个放置初始化器中采样，按它们被追加的顺序。
+        参数:
+            fixtures (dict): 当前场景中物体放置的字典，以及不应与新采样物体接触的任何其他相关
+                障碍物。用于确保新生成的放置是有效的。应该是物体名称映射到(pos, quat, MujocoObject)
+            reference (str or 3-tuple or None): 如果提供，采样相对放置。这将覆盖每个
+                采样器的@reference参数（如果尚未指定）。可以是字符串，
+                对应@fixtures中找到的现有物体，或直接的(x,y,z)值。如果为None，将相对于
+                此采样器的`'reference_pos'`值进行采样。
+            on_top (bool): 如果为True，在参考物体顶部采样放置。这将覆盖每个
+                采样器的@on_top参数（如果尚未指定）。这对应于当前采样的
+                物体的bottom_offset + 参考物体的top_offset的z偏移
+                （如果指定）
+        返回:
+            dict: 所有物体放置的字典，将object_names映射到(pos, quat, obj)，包括
+                @fixtures中指定的放置。注意quat为(w,x,y,z)格式
+        异常:
+            RandomizationError: [无法放置所有物体]
         """
-        # Standardize inputs
+        # 标准化输入
         placed_objects = {} if fixtures is None else copy(fixtures)
 
-        # Iterate through all samplers to sample
+        # 遍历所有采样器进行采样
         for sampler, s_args in zip(self.samplers.values(), self.sample_args.values()):
-            # Pre-process sampler args
+            # 预处理采样器参数
             if s_args is None:
                 s_args = {}
             for arg_name, arg in zip(("reference", "on_top"), (reference, on_top)):
                 if arg_name not in s_args:
                     s_args[arg_name] = arg
-            # Run sampler
+            # 运行采样器
             new_placements = sampler.sample(sim=sim, fixtures=placed_objects, **s_args)
-            # Update placements
+            # 更新放置
             placed_objects.update(new_placements)
 
         return placed_objects

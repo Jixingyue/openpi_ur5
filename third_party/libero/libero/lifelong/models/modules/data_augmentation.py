@@ -20,7 +20,7 @@ class IdentityAug(nn.Module):
 
 class TranslationAug(nn.Module):
     """
-    Utilize the random crop from robomimic.
+    利用来自 robomimic 的随机裁剪。
     """
 
     def __init__(
@@ -60,7 +60,7 @@ class TranslationAug(nn.Module):
 
 class ImgColorJitterAug(torch.nn.Module):
     """
-    Conduct color jittering augmentation outside of proposal boxes
+    在提议框之外进行颜色抖动增强
     """
 
     def __init__(
@@ -91,7 +91,7 @@ class ImgColorJitterAug(torch.nn.Module):
 
 class ImgColorJitterGroupAug(torch.nn.Module):
     """
-    Conduct color jittering augmentation outside of proposal boxes
+    在提议框之外进行颜色抖动增强
     """
 
     def __init__(
@@ -123,9 +123,9 @@ class ImgColorJitterGroupAug(torch.nn.Module):
 
 class BatchWiseImgColorJitterAug(torch.nn.Module):
     """
-    Color jittering augmentation to individual batch.
-    This is to create variation in training data to combat
-    BatchNorm in convolution network.
+    对单个批次进行颜色抖动增强。
+    这是为了在训练数据中制造变化，以对抗
+    卷积网络中的 BatchNorm。
     """
 
     def __init__(
@@ -158,7 +158,7 @@ class BatchWiseImgColorJitterAug(torch.nn.Module):
 
 class DataAugGroup(nn.Module):
     """
-    Add augmentation to multiple inputs
+    为多个输入添加增强
     """
 
     def __init__(self, aug_list):

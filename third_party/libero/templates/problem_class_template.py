@@ -12,13 +12,13 @@ from libero.libero.envs.utils import rectangle2xyrange
 class YOUR_CLASS_NAME(BDDLBaseDomain):
     def __init__(self, bddl_file_name, *args, **kwargs):
 
-        # Configure the workspace
+        # 配置工作区
         self.workspace_name = "kitchen_table"
         self.visualization_sites_list = []
 
         self.kitchen_table_full_size = (1.0, 1.2, 0.05)
         self.kitchen_table_offset = (0.0, 0, 0.90)
-        # For z offset of environment fixtures
+        # 用于环境固定装置的 z 偏移
         self.z_offset = 0.01 - self.kitchen_table_full_size[2]
         kwargs.update(
             {"robots": [f"Mounted{robot_name}" for robot_name in kwargs["robots"]]}
@@ -26,13 +26,13 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         kwargs.update({"workspace_offset": self.kitchen_table_offset})
         kwargs.update({"arena_type": "kitchen"})
 
-        # Specify the scene xml and scene properties. Specify the default here since not many people would need to change this actively.
+        # 指定场景 xml 和场景属性。在此处指定默认值，因为很少有人需要主动更改它。
         if "scene_xml" not in kwargs or kwargs["scene_xml"] is None:
             kwargs.update(
                 {"scene_xml": "scenes/libero_kitchen_tabletop_base_style.xml"}
             )
         if "scene_properties" not in kwargs or kwargs["scene_properties"] is None:
-            # The scene properties need to be specified in libero/envs/arenas/style.py.
+            # 场景属性需要在 libero/envs/arenas/style.py 中指定。
             kwargs.update(
                 {
                     "scene_properties": {
@@ -45,7 +45,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         super().__init__(bddl_file_name, *args, **kwargs)
 
     def _load_fixtures_in_arena(self, mujoco_arena):
-        """Load the figures in this scene. If some extra process is required for the initial configurations, do it here."""
+        """加载此场景中的固定装置。如果初始配置需要一些额外处理，请在此处完成。"""
         for fixture_category in list(self.parsed_problem["fixtures"].keys()):
             if fixture_category == "kitchen_table":
                 continue
@@ -56,7 +56,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 )
 
     def _load_objects_in_arena(self, mujoco_arena):
-        """Load the movable objects in this scene."""
+        """加载此场景中的可移动物体。"""
         objects_dict = self.parsed_problem["objects"]
         for category_name in objects_dict.keys():
             for object_name in objects_dict[category_name]:
@@ -65,7 +65,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 )
 
     def _load_sites_in_arena(self, mujoco_arena):
-        """Load the sites in this part. Sites are used for either visualization purpose, or specifying the target region / containing region."""
+        """加载这部分中的 site。site 用于可视化目的，或用于指定目标区域 / 容纳区域。"""
         object_sites_dict = {}
         region_dict = self.parsed_problem["regions"]
         for object_region_name in list(region_dict.keys()):
@@ -97,12 +97,12 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                     )
                 )
                 continue
-            # Otherwise the processing is consistent
+            # 否则处理是一致的
             for query_dict in [self.objects_dict, self.fixtures_dict]:
                 for (name, body) in query_dict.items():
                     try:
                         if "worldbody" not in list(body.__dict__.keys()):
-                            # This is a special case for CompositeObject, we skip this as this is very rare in our benchmark
+                            # 这是 CompositeObject 的一个特殊情况，我们跳过它，因为这在我们的基准测试中非常罕见
                             continue
                     except:
                         continue
@@ -127,19 +127,19 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                                 )
         self.object_sites_dict = object_sites_dict
 
-        # Keep track of visualization objects
+        # 跟踪可视化对象
         for query_dict in [self.fixtures_dict, self.objects_dict]:
             for name, body in query_dict.items():
                 if body.object_properties["vis_site_names"] != {}:
                     self.visualization_sites_list.append(name)
 
     def _add_placement_initializer(self):
-        """Very simple implementation at the moment. Will need to upgrade for other relations later. Take a look at BDDLBaseDomain class, and modify the implementation logic accordingly based on your own need."""
+        """目前非常简单的实现。以后需要针对其他关系进行升级。请查看 BDDLBaseDomain 类，并根据你自己的需求相应地修改实现逻辑。"""
         super()._add_placement_initializer()
 
     def _check_success(self):
         """
-        Check if the goal is achieved. Consider conjunction goals at the moment
+        检查目标是否已达成。目前考虑合取目标
         """
         goal_state = self.parsed_problem["goal_state"]
         result = True
@@ -148,9 +148,9 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         return result
 
     def _eval_predicate(self, state):
-        """Evaluate each predicate. For the moment, we only consider unary and binary predicates."""
+        """评估每个谓词。目前，我们只考虑一元和二元谓词。"""
         if len(state) == 3:
-            # Checking binary logical predicates
+            # 检查二元逻辑谓词
             predicate_fn_name = state[0]
             object_1_name = state[1]
             object_2_name = state[2]
@@ -160,7 +160,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 self.object_states_dict[object_2_name],
             )
         elif len(state) == 2:
-            # Checking unary logical predicates
+            # 检查一元逻辑谓词
             predicate_fn_name = state[0]
             object_name = state[1]
             return eval_predicate_fn(
@@ -168,17 +168,17 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
             )
 
     def _setup_references(self):
-        """Set up references for the objects. Add extra implementation here if the method in the parent class is not sufficient."""
+        """为对象设置引用。如果父类中的方法不够用，请在此处添加额外实现。"""
         super()._setup_references()
 
     def _post_process(self):
-        """Post process the simulation step. Mainly for handling site visualization."""
+        """对仿真步骤进行后处理。主要用于处理 site 可视化。"""
         super()._post_process()
 
         self.set_visualization()
 
     def set_visualization(self):
-        """Set the visualization of the objects in the scene."""
+        """设置场景中对象的可视化。"""
         for object_name in self.visualization_sites_list:
             for _, (site_name, site_visible) in (
                 self.get_object(object_name).object_properties["vis_site_names"].items()
@@ -187,13 +187,13 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 if ((self.sim.model.site_rgba[vis_g_id][3] <= 0) and site_visible) or (
                     (self.sim.model.site_rgba[vis_g_id][3] > 0) and not site_visible
                 ):
-                    # We toggle the alpha value
+                    # 我们切换 alpha 值
                     self.sim.model.site_rgba[vis_g_id][3] = (
                         1 - self.sim.model.site_rgba[vis_g_id][3]
                     )
 
     def _setup_camera(self, mujoco_arena):
-        """Configure the camera as the workspace observation."""
+        """将相机配置为工作区观测。"""
         mujoco_arena.set_camera(
             camera_name="agentview",
             pos=[0.6586131746834771, 0.0, 1.6103500240372423],
@@ -205,7 +205,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
             ],
         )
 
-        # For visualization purpose
+        # 用于可视化目的
         mujoco_arena.set_camera(
             camera_name="frontview", pos=[1.0, 0.0, 1.48], quat=[0.56, 0.43, 0.43, 0.56]
         )
