@@ -1,4 +1,4 @@
-"""Intel RealSense D435i color capture."""
+"""Intel RealSense D435i 彩色图像采集。"""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class D435iColorCamera:
-    """BGR8 color frames from a D435i (or compatible) via pyrealsense2."""
+    """通过 pyrealsense2 从 D435i（或兼容设备）获取 BGR8 彩色帧。"""
 
     def __init__(
         self,
@@ -40,7 +40,7 @@ class D435iColorCamera:
         logger.info("RealSense pipeline started (%sx%s @ %s fps)", width, height, fps)
 
     def read_bgr(self) -> np.ndarray:
-        """Return HxWx3 uint8 BGR (OpenCV / RealSense native)."""
+        """返回 HxWx3 uint8 BGR（OpenCV / RealSense 原生格式）。"""
         frames = self._pipeline.wait_for_frames()
         color = frames.get_color_frame()
         if not color:
@@ -48,7 +48,7 @@ class D435iColorCamera:
         return np.asanyarray(color.get_data())
 
     def read_rgb(self) -> np.ndarray:
-        """Return HxWx3 uint8 RGB for the policy client."""
+        """返回 HxWx3 uint8 RGB，供策略客户端使用。"""
         bgr = self.read_bgr()
         return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
@@ -58,7 +58,7 @@ class D435iColorCamera:
 
 
 class FakeColorCamera:
-    """Offline / CI placeholder."""
+    """离线 / CI 占位实现。"""
 
     def read_rgb(self) -> np.ndarray:
         return np.zeros(

@@ -231,7 +231,7 @@ if __name__ == "__main__":
                 "angles": angles,
                 "state": pre_angles,
                 
-                "gripper_pos_norm": gripper_pos_norm,  # [0, 1] mapped value
+                "gripper_pos_norm": gripper_pos_norm,  # 映射到 [0, 1] 区间的值
                 "gripper": gripper_state,
                 "gripper_state": pre_gripper_state,
                 "gripper_command": last_gripper_command.copy() if isinstance(last_gripper_command, dict) else None,

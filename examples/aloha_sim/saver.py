@@ -8,7 +8,7 @@ from typing_extensions import override
 
 
 class VideoSaver(_subscriber.Subscriber):
-    """Saves episode data."""
+    """保存 episode 数据。"""
 
     def __init__(self, out_dir: pathlib.Path, subsample: int = 1) -> None:
         out_dir.mkdir(parents=True, exist_ok=True)

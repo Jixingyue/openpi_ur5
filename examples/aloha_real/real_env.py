@@ -1,4 +1,4 @@
-# Ignore lint errors because this file is mostly copied from ACT (https://github.com/tonyzhaozh/act).
+# 忽略 lint 错误，因为本文件大部分内容拷自 ACT (https://github.com/tonyzhaozh/act)。
 # ruff: noqa
 import collections
 import time
@@ -11,26 +11,26 @@ import numpy as np
 from examples.aloha_real import constants
 from examples.aloha_real import robot_utils
 
-# This is the reset position that is used by the standard Aloha runtime.
+# 标准 Aloha runtime 使用的 reset 位置。
 DEFAULT_RESET_POSITION = [0, -0.96, 1.16, 0, -0.3, 0]
 
 
 class RealEnv:
     """
-    Environment for real robot bi-manual manipulation
-    Action space:      [left_arm_qpos (6),             # absolute joint position
-                        left_gripper_positions (1),    # normalized gripper position (0: close, 1: open)
-                        right_arm_qpos (6),            # absolute joint position
-                        right_gripper_positions (1),]  # normalized gripper position (0: close, 1: open)
+    真实机器人双臂操作环境
+    动作空间：      [left_arm_qpos (6),             # 关节绝对位置
+                        left_gripper_positions (1),    # 归一化夹爪位置（0：闭合，1：张开）
+                        right_arm_qpos (6),            # 关节绝对位置
+                        right_gripper_positions (1),]  # 归一化夹爪位置（0：闭合，1：张开）
 
-    Observation space: {"qpos": Concat[ left_arm_qpos (6),          # absolute joint position
-                                        left_gripper_position (1),  # normalized gripper position (0: close, 1: open)
-                                        right_arm_qpos (6),         # absolute joint position
-                                        right_gripper_qpos (1)]     # normalized gripper position (0: close, 1: open)
-                        "qvel": Concat[ left_arm_qvel (6),         # absolute joint velocity (rad)
-                                        left_gripper_velocity (1),  # normalized gripper velocity (pos: opening, neg: closing)
-                                        right_arm_qvel (6),         # absolute joint velocity (rad)
-                                        right_gripper_qvel (1)]     # normalized gripper velocity (pos: opening, neg: closing)
+    观测空间： {"qpos": Concat[ left_arm_qpos (6),          # 关节绝对位置
+                                        left_gripper_position (1),  # 归一化夹爪位置（0：闭合，1：张开）
+                                        right_arm_qpos (6),         # 关节绝对位置
+                                        right_gripper_qpos (1)]     # 归一化夹爪位置（0：闭合，1：张开）
+                        "qvel": Concat[ left_arm_qvel (6),         # 关节绝对速度（rad）
+                                        left_gripper_velocity (1),  # 归一化夹爪速度（正：张开中，负：闭合中）
+                                        right_arm_qvel (6),         # 关节绝对速度（rad）
+                                        right_gripper_qvel (1)]     # 归一化夹爪速度（正：张开中，负：闭合中）
                         "images": {"cam_high": (480x640x3),        # h, w, c, dtype='uint8'
                                    "cam_low": (480x640x3),         # h, w, c, dtype='uint8'
                                    "cam_left_wrist": (480x640x3),  # h, w, c, dtype='uint8'
@@ -70,10 +70,10 @@ class RealEnv:
         right_arm_qpos = right_qpos_raw[:6]
         left_gripper_qpos = [
             constants.PUPPET_GRIPPER_POSITION_NORMALIZE_FN(left_qpos_raw[7])
-        ]  # this is position not joint
+        ]  # 这里是位置而非关节
         right_gripper_qpos = [
             constants.PUPPET_GRIPPER_POSITION_NORMALIZE_FN(right_qpos_raw[7])
-        ]  # this is position not joint
+        ]  # 这里是位置而非关节
         return np.concatenate([left_arm_qpos, left_gripper_qpos, right_arm_qpos, right_gripper_qpos])
 
     def get_qvel(self):
@@ -112,11 +112,10 @@ class RealEnv:
         )
 
     def _reset_gripper(self):
-        """Set to position mode and do position resets: first close then open. Then change back to PWM mode
+        """切换到位置模式并进行位置 reset：先闭合后张开。然后切回 PWM 模式
 
-        NOTE: This diverges from the original Aloha code which first opens then closes the gripper. Pi internal aloha data
-        was collected with the gripper starting in the open position. Leaving the grippers fully closed was also found to
-        increase the frequency of motor faults.
+        注意：这里与原始 Aloha 代码不同（原始代码先张开后闭合）。Pi 内部 aloha 数据采集时，夹爪
+        是从张开位置开始的。此外发现将夹爪保持完全闭合会增加电机故障的频率。
         """
         robot_utils.move_grippers(
             [self.puppet_bot_left, self.puppet_bot_right], [constants.PUPPET_GRIPPER_JOINT_CLOSE] * 2, move_time=1
@@ -138,7 +137,7 @@ class RealEnv:
 
     def reset(self, *, fake=False):
         if not fake:
-            # Reboot puppet robot gripper motors
+            # 重启 puppet 机器人夹爪电机
             self.puppet_bot_left.dxl.robot_reboot_motors("single", "gripper", True)
             self.puppet_bot_right.dxl.robot_reboot_motors("single", "gripper", True)
             self._reset_joints()
@@ -161,11 +160,11 @@ class RealEnv:
 
 
 def get_action(master_bot_left, master_bot_right):
-    action = np.zeros(14)  # 6 joint + 1 gripper, for two arms
-    # Arm actions
+    action = np.zeros(14)  # 6 个关节 + 1 个夹爪，共两只手臂
+    # 手臂动作
     action[:6] = master_bot_left.dxl.joint_states.position[:6]
     action[7 : 7 + 6] = master_bot_right.dxl.joint_states.position[:6]
-    # Gripper actions
+    # 夹爪动作
     action[6] = constants.MASTER_GRIPPER_JOINT_NORMALIZE_FN(master_bot_left.dxl.joint_states.position[6])
     action[7 + 6] = constants.MASTER_GRIPPER_JOINT_NORMALIZE_FN(master_bot_right.dxl.joint_states.position[6])
 

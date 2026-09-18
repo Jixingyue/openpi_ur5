@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class EnvMode(enum.Enum):
-    """Supported environments."""
+    """支持的环境。"""
 
     ALOHA = "aloha"
     ALOHA_SIM = "aloha_sim"
@@ -25,36 +25,36 @@ class EnvMode(enum.Enum):
 
 @dataclasses.dataclass
 class Args:
-    """Command line arguments."""
+    """命令行参数。"""
 
-    # Host and port to connect to the server.
+    # 连接到服务端的 host。
     host: str = "0.0.0.0"
-    # Port to connect to the server. If None, the server will use the default port.
+    # 连接到服务端的端口。若为 None，服务端将使用默认端口。
     port: int | None = 8000
-    # API key to use for the server.
+    # 服务端使用的 API key。
     api_key: str | None = None
-    # Number of steps to run the policy for.
+    # 运行策略的步数。
     num_steps: int = 20
-    # Path to save the timings to a parquet file. (e.g., timing.parquet)
+    # 将计时保存为 parquet 文件的路径。（例如：timing.parquet）
     timing_file: pathlib.Path | None = None
-    # Environment to run the policy in.
+    # 运行策略的环境。
     env: EnvMode = EnvMode.ALOHA_SIM
 
 
 class TimingRecorder:
-    """Records timing measurements for different keys."""
+    """记录不同 key 的计时测量。"""
 
     def __init__(self) -> None:
         self._timings: dict[str, list[float]] = {}
 
     def record(self, key: str, time_ms: float) -> None:
-        """Record a timing measurement for the given key."""
+        """为指定 key 记录一次计时测量。"""
         if key not in self._timings:
             self._timings[key] = []
         self._timings[key].append(time_ms)
 
     def get_stats(self, key: str) -> dict[str, float]:
-        """Get statistics for the given key."""
+        """获取指定 key 的统计信息。"""
         times = self._timings[key]
         return {
             "mean": float(np.mean(times)),
@@ -68,7 +68,7 @@ class TimingRecorder:
         }
 
     def print_all_stats(self) -> None:
-        """Print statistics for all keys in a concise format."""
+        """以简洁的格式打印所有 key 的统计信息。"""
 
         table = rich.table.Table(
             title="[bold blue]Timing Statistics[/bold blue]",
@@ -78,10 +78,10 @@ class TimingRecorder:
             title_justify="center",
         )
 
-        # Add metric column with custom styling
+        # 添加具有自定义样式的指标列
         table.add_column("Metric", style="cyan", justify="left", no_wrap=True)
 
-        # Add statistical columns with consistent styling
+        # 添加具有一致样式的统计列
         stat_columns = [
             ("Mean", "yellow", "mean"),
             ("Std", "yellow", "std"),
@@ -96,18 +96,18 @@ class TimingRecorder:
         for name, style, _ in stat_columns:
             table.add_column(name, justify="right", style=style, no_wrap=True)
 
-        # Add rows for each metric with formatted values
+        # 为每个指标添加行，并格式化值
         for key in sorted(self._timings.keys()):
             stats = self.get_stats(key)
             values = [f"{stats[key]:.1f}" for _, _, key in stat_columns]
             table.add_row(key, *values)
 
-        # Print with custom console settings
+        # 使用自定义控制台设置打印
         console = rich.console.Console(width=None, highlight=True)
         console.print(table)
 
     def write_parquet(self, path: pathlib.Path) -> None:
-        """Save the timings to a parquet file."""
+        """将计时保存到 parquet 文件。"""
         logger.info(f"Writing timings to {path}")
         frame = pl.DataFrame(self._timings)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -129,7 +129,7 @@ def main(args: Args) -> None:
     )
     logger.info(f"Server metadata: {policy.get_server_metadata()}")
 
-    # Send a few observations to make sure the model is loaded.
+    # 发送一些观测以确保模型已加载。
     for _ in range(2):
         policy.infer(obs_fn())
 

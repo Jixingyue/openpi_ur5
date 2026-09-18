@@ -1,21 +1,20 @@
 """
-Minimal example script for converting a dataset to LeRobot format.
+将数据集转换为 LeRobot 格式的极简示例脚本。
 
-We use the Libero dataset (stored in RLDS) for this example, but it can be easily
-modified for any other data you have saved in a custom format.
+本示例使用 Libero 数据集（存储为 RLDS），但可以轻松修改为适用于您以自定义格式保存的任何其他数据。
 
-Usage:
+使用方法：
 uv run examples/libero/convert_libero_data_to_lerobot.py --data_dir /path/to/your/data
 
-If you want to push your dataset to the Hugging Face Hub, you can use the following command:
+如果您想将数据集推送到 Hugging Face Hub，可以使用以下命令：
 uv run examples/libero/convert_libero_data_to_lerobot.py --data_dir /path/to/your/data --push_to_hub
 
-Note: to run the script, you need to install tensorflow_datasets:
+注意：要运行本脚本，您需要安装 tensorflow_datasets：
 `uv pip install tensorflow tensorflow_datasets`
 
-You can download the raw Libero datasets from https://huggingface.co/datasets/openvla/modified_libero_rlds
-The resulting dataset will get saved to the $HF_LEROBOT_HOME directory.
-Running this conversion script will take approximately 30 minutes.
+您可以从 https://huggingface.co/datasets/openvla/modified_libero_rlds 下载原始 Libero 数据集
+生成的数据集将保存到 $HF_LEROBOT_HOME 目录。
+运行本转换脚本大约需要 30 分钟。
 """
 
 import shutil
@@ -25,24 +24,24 @@ from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import tensorflow_datasets as tfds
 import tyro
 
-REPO_NAME = "your_hf_username/libero"  # Name of the output dataset, also used for the Hugging Face Hub
+REPO_NAME = "your_hf_username/libero"  # 输出数据集的名称，也用于 Hugging Face Hub
 RAW_DATASET_NAMES = [
     "libero_10_no_noops",
     "libero_goal_no_noops",
     "libero_object_no_noops",
     "libero_spatial_no_noops",
-]  # For simplicity we will combine multiple Libero datasets into one training dataset
+]  # 为简化起见，我们将多个 Libero 数据集合并为一个训练数据集
 
 
 def main(data_dir: str, *, push_to_hub: bool = False):
-    # Clean up any existing dataset in the output directory
+    # 清理输出目录中任何已存在的数据集
     output_path = HF_LEROBOT_HOME / REPO_NAME
     if output_path.exists():
         shutil.rmtree(output_path)
 
-    # Create LeRobot dataset, define features to store
-    # OpenPi assumes that proprio is stored in `state` and actions in `action`
-    # LeRobot assumes that dtype of image data is `image`
+    # 创建 LeRobot 数据集，定义要存储的特征
+    # OpenPi 假设本体感知信息存储在 `state` 中，动作存储在 `action` 中
+    # LeRobot 假设图像数据的 dtype 为 `image`
     dataset = LeRobotDataset.create(
         repo_id=REPO_NAME,
         robot_type="panda",
@@ -73,8 +72,8 @@ def main(data_dir: str, *, push_to_hub: bool = False):
         image_writer_processes=5,
     )
 
-    # Loop over raw Libero datasets and write episodes to the LeRobot dataset
-    # You can modify this for your own data format
+    # 遍历原始 Libero 数据集，并将 episode 写入 LeRobot 数据集
+    # 您可以根据自己的数据格式修改这部分
     for raw_dataset_name in RAW_DATASET_NAMES:
         raw_dataset = tfds.load(raw_dataset_name, data_dir=data_dir, split="train")
         for episode in raw_dataset:
@@ -90,7 +89,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
                 )
             dataset.save_episode()
 
-    # Optionally push to the Hugging Face Hub
+    # 可选推送到 Hugging Face Hub
     if push_to_hub:
         dataset.push_to_hub(
             tags=["libero", "panda", "rlds"],

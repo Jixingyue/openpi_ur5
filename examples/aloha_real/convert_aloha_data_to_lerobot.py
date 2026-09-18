@@ -1,7 +1,7 @@
 """
-Script to convert Aloha hdf5 data to the LeRobot dataset v2.0 format.
+将 Aloha hdf5 数据转换为 LeRobot dataset v2.0 格式的脚本。
 
-Example usage: uv run examples/aloha_real/convert_aloha_data_to_lerobot.py --raw-dir /path/to/raw/data --repo-id <org>/<dataset-name>
+使用示例： uv run examples/aloha_real/convert_aloha_data_to_lerobot.py --raw-dir /path/to/raw/data --repo-id <org>/<dataset-name>
 """
 
 import dataclasses
@@ -127,7 +127,7 @@ def create_empty_dataset(
 
 def get_cameras(hdf5_files: list[Path]) -> list[str]:
     with h5py.File(hdf5_files[0], "r") as ep:
-        # ignore depth channel, not currently handled
+        # 忽略 depth 通道，当前未处理
         return [key for key in ep["/observations/images"].keys() if "depth" not in key]  # noqa: SIM118
 
 
@@ -147,12 +147,12 @@ def load_raw_images_per_camera(ep: h5py.File, cameras: list[str]) -> dict[str, n
         uncompressed = ep[f"/observations/images/{camera}"].ndim == 4
 
         if uncompressed:
-            # load all images in RAM
+            # 将所有图像加载到内存中
             imgs_array = ep[f"/observations/images/{camera}"][:]
         else:
             import cv2
 
-            # load one compressed image after the other in RAM and uncompress
+            # 逐张加载压缩图像到内存并解压
             imgs_array = []
             for data in ep[f"/observations/images/{camera}"]:
                 imgs_array.append(cv2.cvtColor(cv2.imdecode(data, 1), cv2.COLOR_BGR2RGB))

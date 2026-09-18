@@ -1,4 +1,4 @@
-# Ignore lint errors because this file is mostly copied from ACT (https://github.com/tonyzhaozh/act).
+# 忽略 lint 错误，因为本文件大部分内容拷自 ACT (https://github.com/tonyzhaozh/act)。
 # ruff: noqa
 from collections import deque
 import datetime
@@ -244,30 +244,30 @@ def torque_on(bot):
     bot.dxl.robot_torque_enable("single", "gripper", True)
 
 
-# for DAgger
+# 用于 DAgger
 def sync_puppet_to_master(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right):
     print("\nSyncing!")
 
-    # activate master arms
+    # 启用 master 手臂力矩
     torque_on(master_bot_left)
     torque_on(master_bot_right)
 
-    # get puppet arm positions
+    # 获取 puppet 手臂位置
     puppet_left_qpos = get_arm_joint_positions(puppet_bot_left)
     puppet_right_qpos = get_arm_joint_positions(puppet_bot_right)
 
-    # get puppet gripper positions
+    # 获取 puppet 夹爪位置
     puppet_left_gripper = get_arm_gripper_positions(puppet_bot_left)
     puppet_right_gripper = get_arm_gripper_positions(puppet_bot_right)
 
-    # move master arms to puppet positions
+    # 将 master 手臂移动到 puppet 位置
     move_arms(
         [master_bot_left, master_bot_right],
         [puppet_left_qpos, puppet_right_qpos],
         move_time=1,
     )
 
-    # move master grippers to puppet positions
+    # 将 master 夹爪移动到 puppet 位置
     move_grippers(
         [master_bot_left, master_bot_right],
         [puppet_left_gripper, puppet_right_gripper],

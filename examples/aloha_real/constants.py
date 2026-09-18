@@ -1,26 +1,26 @@
-# Ignore lint errors because this file is mostly copied from ACT (https://github.com/tonyzhaozh/act).
+# 忽略 lint 错误，因为本文件大部分内容拷自 ACT (https://github.com/tonyzhaozh/act)。
 # ruff: noqa
 
-### Task parameters
+### 任务参数
 
-### ALOHA fixed constants
+### ALOHA 固定常量
 DT = 0.001
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
 START_ARM_POSE = [0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239, 0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239]
 
-# Left finger position limits (qpos[7]), right_finger = -1 * left_finger
+# 左手指位置限制（qpos[7]），right_finger = -1 * left_finger
 MASTER_GRIPPER_POSITION_OPEN = 0.02417
 MASTER_GRIPPER_POSITION_CLOSE = 0.01244
 PUPPET_GRIPPER_POSITION_OPEN = 0.05800
 PUPPET_GRIPPER_POSITION_CLOSE = 0.01844
 
-# Gripper joint limits (qpos[6])
+# 夹爪关节限制（qpos[6]）
 MASTER_GRIPPER_JOINT_OPEN = 0.3083
 MASTER_GRIPPER_JOINT_CLOSE = -0.6842
 PUPPET_GRIPPER_JOINT_OPEN = 1.4910
 PUPPET_GRIPPER_JOINT_CLOSE = -0.6213
 
-############################ Helper functions ############################
+############################ 辅助函数 ############################
 
 MASTER_GRIPPER_POSITION_NORMALIZE_FN = lambda x: (x - MASTER_GRIPPER_POSITION_CLOSE) / (
     MASTER_GRIPPER_POSITION_OPEN - MASTER_GRIPPER_POSITION_CLOSE

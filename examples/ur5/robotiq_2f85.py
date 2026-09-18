@@ -1,10 +1,10 @@
-"""Robotiq 2F-85 over Modbus RTU (serial), aligned with ``main_ur3_all.py`` usage.
+"""基于 Modbus RTU（串口）的 Robotiq 2F-85 驱动，与 ``main_ur3_all.py`` 的用法保持一致。
 
-Register layout follows Robotiq 2F-85 / 2F-140 Instruction Manual (Modbus RTU):
-  - Write FC16 starting at **1000** (0x03E8): action + position + speed/force.
-  - Read FC03 starting at **2000** (0x07D0): status, echo, position/current.
+寄存器布局遵循 Robotiq 2F-85 / 2F-140 Instruction Manual (Modbus RTU)：
+  - 使用 FC16 从 **1000** (0x03E8) 开始写入：action + position + speed/force。
+  - 使用 FC03 从 **2000** (0x07D0) 开始读取：status、echo、position/current。
 
-Requires: ``uv pip install pymodbus`` (listed in ``examples/ur5/requirements.txt``).
+依赖：``uv pip install pymodbus``（已在 ``examples/ur5/requirements.txt`` 中列出）。
 """
 
 from __future__ import annotations
@@ -15,13 +15,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Modbus register addresses (Robotiq manual).
+# Modbus 寄存器地址（参考 Robotiq 手册）。
 _REG_OUT_FIRST = 1000
 _REG_IN_FIRST = 2000
 
 
 def _read_regs(client: Any, address: int, count: int, *, slave: int) -> list[int]:
-    # pymodbus 3.7+ uses ``device_id``; older releases used ``slave``.
+    # pymodbus 3.7+ 使用 ``device_id``；早期版本使用 ``slave``。
     try:
         resp = client.read_holding_registers(address, count, device_id=slave)
     except TypeError:
@@ -41,7 +41,7 @@ def _write_regs(client: Any, address: int, values: list[int], *, slave: int) -> 
 
 
 class Robotiq2F85:
-    """Minimal Robotiq 2F-85 driver (same surface as ``controller.robotiq_2f85`` in ``main_ur3_all``)."""
+    """极简 Robotiq 2F-85 驱动（接口与 ``main_ur3_all`` 中的 ``controller.robotiq_2f85`` 保持一致）。"""
 
     def __init__(
         self,
@@ -95,19 +95,19 @@ class Robotiq2F85:
             time.sleep(self._post_cmd_delay)
 
     def _status_byte(self, regs: list[int]) -> int:
-        """High byte of first input register (gripper status byte)."""
+        """首个输入寄存器的高字节（夹爪状态字节）。"""
         return (int(regs[0]) >> 8) & 0xFF
 
     def _gsta(self, status_byte: int) -> int:
-        """Activation / motion state nibble (manual: gSTA in status byte)."""
+        """激活 / 运动状态半字节（手册：状态字节中的 gSTA）。"""
         return (status_byte >> 4) & 0x03
 
     def _gobj(self, status_byte: int) -> int:
-        """Object detection field (manual: gOBJ in status byte)."""
+        """物体检测字段（手册：状态字节中的 gOBJ）。"""
         return (status_byte >> 6) & 0x03
 
     def get_status(self) -> dict[str, Any]:
-        """Return dict compatible with ``main_ur3_all`` logging keys."""
+        """返回与 ``main_ur3_all`` 日志使用的键兼容的 dict。"""
         client = self._ensure_client()
         regs = _read_regs(client, _REG_IN_FIRST, 3, slave=self._slave)
         sb = self._status_byte(regs)
@@ -122,7 +122,7 @@ class Robotiq2F85:
         }
 
     def activate(self, *, wait: bool = True, timeout: float = 5.0) -> bool:
-        """Clear outputs, assert rACT, poll until activation completes (gSTA == 3)."""
+        """清零输出，置位 rACT，轮询直到激活完成（gSTA == 3）。"""
         client = self._ensure_client()
         _write_regs(client, _REG_OUT_FIRST, [0, 0, 0], slave=self._slave)
         self._sleep_cmd()
@@ -145,14 +145,14 @@ class Robotiq2F85:
         return False
 
     def move(self, *, position: int, speed: int, force: int) -> None:
-        """Go to ``position`` (0..255) with speed/force (0..255). Requires successful ``activate``."""
+        """以指定的 speed/force（0..255）移动到 ``position``（0..255）。需先成功调用 ``activate``。"""
         if not self._activated:
             raise RuntimeError("Robotiq2F85.activate() must succeed before move().")
         client = self._ensure_client()
         pos = max(0, min(255, int(position)))
         spd = max(0, min(255, int(speed)))
         frc = max(0, min(255, int(force)))
-        # rACT=1, rGTO=1 → action high byte 0x09 per Robotiq Modbus example.
+        # rACT=1, rGTO=1 → 按 Robotiq Modbus 示例，action 高字节为 0x09。
         reg0 = 0x0900
         reg1 = pos & 0xFF
         reg2 = (spd << 8) | (frc & 0xFF)

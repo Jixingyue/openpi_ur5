@@ -1,4 +1,4 @@
-"""UR5e + Intel RealSense D435i client: connect to an openpi policy server and run on hardware."""
+"""UR5e + Intel RealSense D435i 客户端：连接到 openpi 策略服务端并在硬件上运行。"""
 
 import dataclasses
 import logging
@@ -15,40 +15,40 @@ from examples.ur5 import rtde_robot as _rtde_robot
 
 @dataclasses.dataclass
 class Args:
-    """Client for ``pi05_ur5_single_cam`` (or compatible) server: flat keys ``image``, ``state``, ``prompt``."""
+    """``pi05_ur5_single_cam``（或兼容）服务端的客户端：扁平化 key ``image``、``state``、``prompt``。"""
 
-    # Policy WebSocket server (GPU machine).
+    # 策略 WebSocket 服务端（GPU 机器）。
     host: str = "localhost"
     port: int = 8000
     api_key: str | None = None
 
-    # UR5e controller IP (RTDE).
+    # UR5e 控制器 IP（RTDE）。
     robot_ip: str = "192.168.0.10"
-    # If true, do not open RTDE (for testing wiring / server connectivity only).
+    # 若为 true，则不打开 RTDE（仅用于测试线路连接 / 服务端连通性）。
     dry_run: bool = False
 
-    # Must match the trained model's action chunk length (``action_horizon`` in TrainConfig).
+    # 必须与训练模型的动作块长度一致（TrainConfig 中的 ``action_horizon``）。
     action_horizon: int = 10
-    # Control loop rate (Hz). Should match training ``fps`` when possible.
+    # 控制循环频率（Hz）。尽可能与训练时的 ``fps`` 保持一致。
     max_hz: float = 30.0
 
     num_episodes: int = 1
     max_episode_steps: int = 10_000
 
-    # Language instruction (must match training style / language if applicable).
+    # 语言指令（如果适用，必须与训练风格 / 语言一致）。
     prompt: str = "海绵放到篮子里"
 
-    # RealSense: set serial to pick a specific D435i when multiple are connected.
+    # RealSense：当连接多个 D435i 时，可通过 serial 指定具体设备。
     use_fake_camera: bool = False
     realsense_serial: str | None = None
 
-    # Gripper observation (7th state dim): when ``robotiq_port`` is set, read from Robotiq;
-    # else RTDE *output* double register, or default constant.
+    # 夹爪观测（state 的第 7 维）：当 ``robotiq_port`` 设置时从 Robotiq 读取；
+    # 否则从 RTDE *输出*双精度寄存器读取，或使用默认常量。
     gripper_obs_register: int = -1
     gripper_obs_default: float = 0.85
 
-    # Robotiq 2F-85 (Modbus RTU). If ``robotiq_port`` is set, gripper activates at startup and
-    # policy action dim 7 in ``[0,1]`` maps linearly to ``[robotiq_open_pos, robotiq_close_pos]`` (0..255).
+    # Robotiq 2F-85（Modbus RTU）。若设置了 ``robotiq_port``，启动时会激活夹爪，
+    # 且策略动作的第 7 维在 ``[0,1]`` 范围内将线性映射到 ``[robotiq_open_pos, robotiq_close_pos]``（0..255）。
     robotiq_port: str | None = None
     robotiq_baudrate: int = 115200
     robotiq_slave_id: int = 9

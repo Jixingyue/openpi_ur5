@@ -5,7 +5,7 @@ from typing_extensions import override
 
 
 class VideoDisplay(_subscriber.Subscriber):
-    """Displays video frames."""
+    """显示视频帧。"""
 
     def __init__(self) -> None:
         self._ax: plt.Axes | None = None

@@ -1,13 +1,13 @@
 """
-Minimal example script for converting a dataset collected on the DROID platform to LeRobot format.
+将在 DROID 平台上采集的数据集转换为 LeRobot 格式的极简示例脚本。
 
-Usage:
+使用方法：
 uv run examples/droid/convert_droid_data_to_lerobot.py --data_dir /path/to/your/data
 
-If you want to push your dataset to the Hugging Face Hub, you can use the following command:
+如果您想将数据集推送到 Hugging Face Hub，可以使用以下命令：
 uv run examples/droid/convert_droid_data_to_lerobot.py --data_dir /path/to/your/data --push_to_hub
 
-The resulting dataset will get saved to the $LEROBOT_HOME directory.
+生成的数据集将保存到 $LEROBOT_HOME 目录。
 """
 
 from collections import defaultdict
@@ -26,7 +26,7 @@ from PIL import Image
 from tqdm import tqdm
 import tyro
 
-REPO_NAME = "your_hf_username/my_droid_dataset"  # Name of the output dataset, also used for the Hugging Face Hub
+REPO_NAME = "your_hf_username/my_droid_dataset"  # 输出数据集的名称，也用于 Hugging Face Hub
 
 
 def resize_image(image, size):
@@ -35,24 +35,24 @@ def resize_image(image, size):
 
 
 def main(data_dir: str, *, push_to_hub: bool = False):
-    # Clean up any existing dataset in the output directory
+    # 清理输出目录中任何已存在的数据集
     output_path = HF_LEROBOT_HOME / REPO_NAME
     if output_path.exists():
         shutil.rmtree(output_path)
     data_dir = Path(data_dir)
 
-    # Create LeRobot dataset, define features to store
-    # We will follow the DROID data naming conventions here.
-    # LeRobot assumes that dtype of image data is `image`
+    # 创建 LeRobot 数据集，定义要存储的特征
+    # 这里遵循 DROID 数据命名规范。
+    # LeRobot 假设图像数据的 dtype 为 `image`
     dataset = LeRobotDataset.create(
         repo_id=REPO_NAME,
         robot_type="panda",
-        fps=15,  # DROID data is typically recorded at 15fps
+        fps=15,  # DROID 数据通常以 15fps 录制
         features={
-            # We call this "left" since we will only use the left stereo camera (following DROID RLDS convention)
+            # 我们将其命名为 "left"，因为我们将仅使用左侧双目相机（遵循 DROID RLDS 惯例）
             "exterior_image_1_left": {
                 "dtype": "image",
-                "shape": (180, 320, 3),  # This is the resolution used in the DROID RLDS dataset
+                "shape": (180, 320, 3),  # 这是 DROID RLDS 数据集中使用的分辨率
                 "names": ["height", "width", "channel"],
             },
             "exterior_image_2_left": {
@@ -77,7 +77,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
             },
             "actions": {
                 "dtype": "float32",
-                "shape": (8,),  # We will use joint *velocity* actions here (7D) + gripper position (1D)
+                "shape": (8,),  # 这里我们使用关节 *速度* 动作（7维） + 夹爪位置（1维）
                 "names": ["actions"],
             },
         },
@@ -85,31 +85,31 @@ def main(data_dir: str, *, push_to_hub: bool = False):
         image_writer_processes=5,
     )
 
-    # Load language annotations
-    # Note: we load the DROID language annotations for this example, but you can manually define them for your own data
+    # 加载语言标注
+    # 注意：本示例中我们加载 DROID 语言标注，但您可以为自己的数据手动定义语言标注
     with (data_dir / "aggregated-annotations-030724.json").open() as f:
         language_annotations = json.load(f)
 
-    # Loop over raw DROID fine-tuning datasets and write episodes to the LeRobot dataset
-    # We assume the following directory structure:
+    # 遍历原始 DROID 微调数据集，并将 episode 写入 LeRobot 数据集
+    # 我们假设以下目录结构：
     # RAW_DROID_PATH/
     #   - <...>/
     #     - recordings/
     #        - MP4/
-    #          - <camera_id>.mp4  # single-view video of left stereo pair camera
+    #          - <camera_id>.mp4  # 双目相机对中左侧相机的单视角视频
     #     - trajectory.hdf5
     #   - <...>/
     episode_paths = list(data_dir.glob("**/trajectory.h5"))
     print(f"Found {len(episode_paths)} episodes for conversion")
 
-    # We will loop over each dataset_name and write episodes to the LeRobot dataset
+    # 我们将遍历每个 dataset_name，并将 episode 写入 LeRobot 数据集
     for episode_path in tqdm(episode_paths, desc="Converting episodes"):
-        # Load raw data
+        # 加载原始数据
         recording_folderpath = episode_path.parent / "recordings" / "MP4"
         trajectory = load_trajectory(str(episode_path), recording_folderpath=str(recording_folderpath))
 
-        # To load the language instruction, we need to parse out the episode_id from the metadata file
-        # Again, you can modify this step for your own data, to load your own language instructions
+        # 为了加载语言指令，我们需要从元数据文件中解析出 episode_id
+        # 同样，您可以为自己的数据修改这一步骤，以加载您自己的语言指令
         metadata_filepath = next(iter(episode_path.parent.glob("metadata_*.json")))
         episode_id = metadata_filepath.name.split(".")[0].split("_")[-1]
         language_instruction = language_annotations.get(episode_id, {"language_instruction1": "Do something"})[
@@ -117,14 +117,14 @@ def main(data_dir: str, *, push_to_hub: bool = False):
         ]
         print(f"Converting episode with language instruction: {language_instruction}")
 
-        # Write to LeRobot dataset
+        # 写入 LeRobot 数据集
         for step in trajectory:
             camera_type_dict = step["observation"]["camera_type"]
             wrist_ids = [k for k, v in camera_type_dict.items() if v == 0]
             exterior_ids = [k for k, v in camera_type_dict.items() if v != 0]
             dataset.add_frame(
                 {
-                    # Note: need to flip BGR --> RGB for loaded images
+                    # 注意：需要将加载的图像从 BGR 翻转为 RGB
                     "exterior_image_1_left": resize_image(
                         step["observation"]["image"][exterior_ids[0]][..., ::-1], (320, 180)
                     ),
@@ -138,7 +138,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
                     "gripper_position": np.asarray(
                         step["observation"]["robot_state"]["gripper_position"][None], dtype=np.float32
                     ),
-                    # Important: we use joint velocity actions here since pi05-droid was pre-trained on joint velocity actions
+                    # 重要：这里我们使用关节速度动作，因为 pi05-droid 是在关节速度动作上预训练的
                     "actions": np.concatenate(
                         [step["action"]["joint_velocity"], step["action"]["gripper_position"][None]], dtype=np.float32
                     ),
@@ -147,7 +147,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
             )
         dataset.save_episode()
 
-    # Optionally push to the Hugging Face Hub
+    # 可选推送到 Hugging Face Hub
     if push_to_hub:
         dataset.push_to_hub(
             tags=["libero", "panda", "rlds"],
@@ -158,9 +158,9 @@ def main(data_dir: str, *, push_to_hub: bool = False):
 
 
 ##########################################################################################################
-################ The rest of this file are functions to parse the raw DROID data #########################
-################ You don't need to worry about understanding this part           #########################
-################ It was copied from here: https://github.com/JonathanYang0127/r2d2_rlds_dataset_builder/blob/parallel_convert/r2_d2/r2_d2.py
+################ 本文件其余部分为解析原始 DROID 数据的函数 #########################
+################ 您不需要关心这部分的理解           #########################
+################ 拷自：https://github.com/JonathanYang0127/r2d2_rlds_dataset_builder/blob/parallel_convert/r2_d2/r2_d2.py
 ##########################################################################################################
 
 
@@ -186,11 +186,11 @@ def get_camera_type(cam_id):
 
 class MP4Reader:
     def __init__(self, filepath, serial_number):
-        # Save Parameters #
+        # 保存参数 #
         self.serial_number = serial_number
         self._index = 0
 
-        # Open Video Reader #
+        # 打开视频读取器 #
         self._mp4_reader = cv2.VideoCapture(filepath)
         if not self._mp4_reader.isOpened():
             raise RuntimeError("Corrupted MP4 File")
@@ -202,7 +202,7 @@ class MP4Reader:
         resolution=(0, 0),
         resize_func=None,
     ):
-        # Save Parameters #
+        # 保存参数 #
         self.image = image
         self.concatenate_images = concatenate_images
         self.resolution = resolution
@@ -239,11 +239,11 @@ class MP4Reader:
         return self.resize_func(frame, self.resolution)
 
     def read_camera(self, ignore_data=False, correct_timestamp=None):  # noqa: FBT002
-        # Skip if Read Unnecessary #
+        # 如果无需读取则跳过 #
         if self.skip_reading:
             return {}
 
-        # Read Camera #
+        # 读取相机 #
         success, frame = self._mp4_reader.read()
 
         self._index += 1
@@ -252,7 +252,7 @@ class MP4Reader:
         if ignore_data:
             return None
 
-        # Return Data #
+        # 返回数据 #
         data_dict = {}
 
         if self.concatenate_images or "stereo" not in self.serial_number:
@@ -273,10 +273,10 @@ class MP4Reader:
 
 class RecordedMultiCameraWrapper:
     def __init__(self, recording_folderpath, camera_kwargs={}):  # noqa: B006
-        # Save Camera Info #
+        # 保存相机信息 #
         self.camera_kwargs = camera_kwargs
 
-        # Open Camera Readers #
+        # 打开相机读取器 #
         mp4_filepaths = glob.glob(recording_folderpath + "/*.mp4")
         all_filepaths = mp4_filepaths
 
@@ -296,7 +296,7 @@ class RecordedMultiCameraWrapper:
     def read_cameras(self, index=None, camera_type_dict={}, timestamp_dict={}):  # noqa: B006
         full_obs_dict = defaultdict(dict)
 
-        # Read Cameras In Randomized Order #
+        # 以随机顺序读取相机 #
         all_cam_ids = list(self.camera_dict.keys())
         # random.shuffle(all_cam_ids)
 
@@ -317,7 +317,7 @@ class RecordedMultiCameraWrapper:
 
             data_dict = self.camera_dict[cam_id].read_camera(correct_timestamp=timestamp)
 
-            # Process Returned Data #
+            # 处理返回的数据 #
             if data_dict is None:
                 return None
             for key in data_dict:
@@ -379,7 +379,7 @@ class TrajectoryReader:
         return self._length
 
     def read_timestep(self, index=None, keys_to_ignore=[]):  # noqa: B006
-        # Make Sure We Read Within Range #
+        # 确保读取在范围内 #
         if index is None:
             index = self._index
         else:
@@ -387,14 +387,14 @@ class TrajectoryReader:
             self._index = index
         assert index < self._length
 
-        # Load Low Dimensional Data #
+        # 加载低维数据 #
         keys_to_ignore = [*keys_to_ignore.copy(), "videos"]
         timestep = load_hdf5_to_dict(self._hdf5_file, self._index, keys_to_ignore=keys_to_ignore)
 
-        # Increment Read Index #
+        # 递增读取索引 #
         self._index += 1
 
-        # Return Timestep #
+        # 返回 timestep #
         return timestep
 
     def close(self):
@@ -419,7 +419,7 @@ def load_trajectory(
     horizon = traj_reader.length()
     timestep_list = []
 
-    # Choose Timesteps To Save #
+    # 选择要保存的 timestep #
     if num_samples_per_traj:
         num_to_save = num_samples_per_traj
         if remove_skipped_steps:
@@ -429,12 +429,12 @@ def load_trajectory(
     else:
         indices_to_save = np.arange(horizon)
 
-    # Iterate Over Trajectory #
+    # 遍历轨迹 #
     for i in indices_to_save:
-        # Get HDF5 Data #
+        # 获取 HDF5 数据 #
         timestep = traj_reader.read_timestep(index=i)
 
-        # If Applicable, Get Recorded Data #
+        # 如果适用，获取录制的数据 #
         if read_recording_folderpath:
             timestamp_dict = timestep["observation"]["timestamp"]["cameras"]
             camera_type_dict = {
@@ -445,31 +445,31 @@ def load_trajectory(
             )
             camera_failed = camera_obs is None
 
-            # Add Data To Timestep If Successful #
+            # 如果成功，将数据添加到 timestep #
             if camera_failed:
                 break
             timestep["observation"].update(camera_obs)
 
-        # Filter Steps #
+        # 过滤步 #
         step_skipped = not timestep["observation"]["controller_info"].get("movement_enabled", True)
         delete_skipped_step = step_skipped and remove_skipped_steps
 
-        # Save Filtered Timesteps #
+        # 保存过滤后的 timestep #
         if delete_skipped_step:
             del timestep
         else:
             timestep_list.append(timestep)
 
-    # Remove Extra Transitions #
+    # 删除额外的转换 #
     timestep_list = np.array(timestep_list)
     if (num_samples_per_traj is not None) and (len(timestep_list) > num_samples_per_traj):
         ind_to_keep = np.random.choice(len(timestep_list), size=num_samples_per_traj, replace=False)
         timestep_list = timestep_list[ind_to_keep]
 
-    # Close Readers #
+    # 关闭读取器 #
     traj_reader.close()
 
-    # Return Data #
+    # 返回数据 #
     return timestep_list
 
 

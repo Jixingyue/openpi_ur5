@@ -1,1 +1,1 @@
-"""UR5e real-robot examples and deployment scripts."""
+"""UR5e 真实机器人示例与部署脚本。"""

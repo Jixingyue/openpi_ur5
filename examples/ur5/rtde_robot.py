@@ -1,4 +1,4 @@
-"""UR5e joint streaming via RTDE (Universal Robots e-Series)."""
+"""通过 RTDE 实现 UR5e 关节流式控制（Universal Robots e-Series）。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Ur5eRtdeInterface:
-    """Minimal RTDE wrapper: read 6 joint positions, stream targets with ``servoJ``."""
+    """极简 RTDE 封装：读取 6 个关节位置，并使用 ``servoJ`` 流式发送目标位置。"""
 
     def __init__(
         self,
@@ -45,7 +45,7 @@ class Ur5eRtdeInterface:
         logger.info("Connected RTDE to UR5e at %s", robot_ip)
 
     def start_servo_mode(self) -> None:
-        """Compatibility hook: ur_rtde streams ``servoJ`` without an explicit start call."""
+        """兼容性钩子：ur_rtde 无需显式启动调用即可流式发送 ``servoJ``。"""
 
     def stop_servo_mode(self) -> None:
         if self._dry_run or self._rtde_c is None:
@@ -53,26 +53,26 @@ class Ur5eRtdeInterface:
         self._rtde_c.servoStop()
 
     def get_actual_q(self) -> np.ndarray:
-        """6 joint angles (rad)."""
+        """6 个关节角度（弧度）。"""
         if self._dry_run or self._rtde_r is None:
             return np.zeros(6, dtype=np.float32)
         return np.asarray(self._rtde_r.getActualQ(), dtype=np.float32)
 
     def get_output_double_register(self, index: int) -> float:
-        """UR output double register (often used by URCaps / tool I/O)."""
+        """UR 输出双精度寄存器（常被 URCaps / 工具 I/O 使用）。"""
         if self._dry_run or self._rtde_r is None:
             return 0.0
         return float(self._rtde_r.getOutputDoubleRegister(int(index)))
 
     def servo_j(self, q6: np.ndarray) -> None:
-        """Stream one servo setpoint (radians). Outer ``Runtime`` ``max_hz`` should match ``servo_time_step``."""
+        """流式发送一个伺服设定点（弧度）。外层 ``Runtime`` 的 ``max_hz`` 应与 ``servo_time_step`` 保持一致。"""
         if self._dry_run or self._rtde_c is None:
             return
         q = [float(x) for x in np.asarray(q6, dtype=np.float64).reshape(-1)[:6]]
         self._rtde_c.servoJ(q, 0.0, 0.0, self._servo_time_step, 0.1, 300)
 
     def move_j(self, q6: np.ndarray, *, speed: float = 0.5, acceleration: float = 0.3) -> None:
-        """Blocking move (useful for reset / homing)."""
+        """阻塞式运动（适用于 reset / 回零）。"""
         if self._dry_run or self._rtde_c is None:
             return
         self.stop_servo_mode()

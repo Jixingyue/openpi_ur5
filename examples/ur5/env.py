@@ -1,4 +1,4 @@
-"""UR5e + D435i environment for openpi remote inference (matches ``pi05_ur5_single_cam`` flat keys)."""
+"""用于 openpi 远程推理的 UR5e + D435i 环境（与 ``pi05_ur5_single_cam`` 的扁平化 key 保持一致）。"""
 
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class UR5RealRobotEnvironment(_environment.Environment):
-    """Build observations for ``LeRobotUR5SingleCamDataConfig`` / ``UR5SingleCameraInputs``.
+    """为 ``LeRobotUR5SingleCamDataConfig`` / ``UR5SingleCameraInputs`` 构造观测数据。
 
-    The policy server expects (before server-side repack) at least:
-    ``image`` (H,W,C uint8 RGB), ``state`` (7,) float32, ``prompt`` (str or bytes).
+    策略服务端（在服务端重新打包之前）至少期望包含：
+    ``image`` (H,W,C uint8 RGB)、``state`` (7,) float32、``prompt``（str 或 bytes）。
 
-    Joint 6-vector is UR ``getActualQ``; gripper scalar is ``[0,1]`` from an optional Robotiq
-    ``get_status()`` position, RTDE output register, or a constant default (see constructor args).
+    6 维关节向量来自 UR ``getActualQ``；夹爪标量取自可选的 Robotiq ``get_status()`` 位置、RTDE
+    输出寄存器或一个常量默认值，映射到 ``[0,1]`` 区间（参见构造函数参数）。
     """
 
     def __init__(
@@ -40,7 +40,7 @@ class UR5RealRobotEnvironment(_environment.Environment):
         render_height: int = _constants.IMAGE_HEIGHT,
         render_width: int = _constants.IMAGE_WIDTH,
         log_gripper_command_interval: int = 200,
-        # Optional Robotiq 2F-85 (Modbus RTU), same role as ``main_ur3_all.py``.
+        # 可选的 Robotiq 2F-85（Modbus RTU），作用与 ``main_ur3_all.py`` 中一致。
         robotiq: Any | None = None,
         robotiq_speed: int = 100,
         robotiq_force: int = 25,
