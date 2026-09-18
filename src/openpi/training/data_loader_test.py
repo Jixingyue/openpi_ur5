@@ -68,12 +68,12 @@ def test_with_real_dataset():
 
     loader = _data_loader.create_data_loader(
         config,
-        # Skip since we may not have the data available.
+        # 跳过，因为我们可能没有可用的数据。
         skip_norm_stats=True,
         num_batches=2,
         shuffle=True,
     )
-    # Make sure that we can get the data config.
+    # 确保我们可以获取数据配置。
     assert loader.data_config().repo_id == config.data.repo_id
 
     batches = list(loader)

@@ -21,15 +21,15 @@ class Pi0Config(_model.BaseModelConfig):
     paligemma_variant: _gemma.Variant = "gemma_2b"
     action_expert_variant: _gemma.Variant = "gemma_300m"
 
-    # Set the model specific defaults.
+    # 设置模型专用的默认值。
     action_dim: int = 32
     action_horizon: int = 50
     max_token_len: int = None  # type: ignore
-    # Pi05 has two differences from Pi0:
-    # - the state input is part of the discrete language tokens rather than a continuous input that is part of the suffix
-    # - the action expert uses adaRMSNorm to inject the flow matching timestep
+    # Pi05 与 Pi0 有两点不同：
+    # - 状态输入是离散语言 token 的一部分，而不是作为 suffix 一部分的连续输入
+    # - 动作专家（action expert）使用 adaRMSNorm 来注入流匹配（flow matching）的时间步
     pi05: bool = False
-    # This config option is not used directly by the model, but it is read by the ModelTransformFactory.
+    # 该配置项不会被模型直接使用，而是由 ModelTransformFactory 读取。
     discrete_state_input: bool = None  # type: ignore
 
     pytorch_compile_mode: str | None = "max-autotune"
@@ -86,7 +86,7 @@ class Pi0Config(_model.BaseModelConfig):
         return observation_spec, action_spec
 
     def get_freeze_filter(self) -> nnx.filterlib.Filter:
-        """Returns the freeze filter based on the model config."""
+        """返回基于模型配置的冻结（freeze）过滤器。"""
         filters = []
         has_lora = False
         gemma_params_filter = nnx_utils.PathRegex(".*llm.*")
@@ -96,7 +96,7 @@ class Pi0Config(_model.BaseModelConfig):
                 gemma_params_filter,
             )
             if "lora" not in self.action_expert_variant:
-                # If only freeze gemma params, exclude action expert params.
+                # 若只冻结 gemma 参数，则排除动作专家参数。
                 filters.append(
                     nnx.Not(action_expert_params_filter),
                 )
@@ -108,7 +108,7 @@ class Pi0Config(_model.BaseModelConfig):
             has_lora = True
 
         if has_lora:
-            # If any lora is used, exclude all lora params.
+            # 若使用了任意 lora，则排除所有 lora 参数。
             filters.append(
                 nnx.Not(nnx_utils.PathRegex(".*lora.*")),
             )

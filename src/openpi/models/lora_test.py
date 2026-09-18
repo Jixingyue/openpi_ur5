@@ -15,17 +15,17 @@ def test_lora_einsum_params_shape():
     x = jax.random.normal(key, (8, 64, 32))  # (BSD)
     eqn = "BSD,3KDH->3BSKH"
 
-    # Ensure that lora parameters are not initialized when LoRA is not used.
+    # 确保在未使用 LoRA 时不会初始化 lora 参数。
     params = einsum.init(key, eqn, x)
     assert "lora_a" not in params["params"]
     assert "lora_b" not in params["params"]
 
-    # Check that default axes work.
+    # 检查默认轴是否生效。
     params_lora0 = lora0.init(key, eqn, x)
     assert params_lora0["params"]["lora_a"].shape == (3, 8, 32, 2)
     assert params_lora0["params"]["lora_b"].shape == (3, 8, 2, 4)
 
-    # Check that user provided axes work.
+    # 检查用户提供的轴是否生效。
     params_lora1 = lora1.init(key, eqn, x)
     assert params_lora1["params"]["lora_a"].shape == (3, 8, 2, 4)
     assert params_lora1["params"]["lora_b"].shape == (3, 2, 32, 4)
@@ -46,7 +46,7 @@ def test_lora_einsum_same_output():
     params_lora = einsum_lora.init(key, eqn, x)
     output_lora = einsum_lora.apply(params_lora, eqn, x)
 
-    # Results are the same since the LoRA parameters are initialized to zeros.
+    # 结果相同，因为 LoRA 参数被初始化为零。
     assert jnp.allclose(output, output_lora)
 
 

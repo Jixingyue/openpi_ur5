@@ -22,14 +22,14 @@ class PaligemmaTokenizer:
     def tokenize(self, prompt: str, state: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
         cleaned_text = prompt.strip().replace("_", " ").replace("\n", " ")
         if state is not None:
-            # This is the Pi05 format, where the state is part of the discrete language input.
+            # 这是 Pi05 格式，其中状态是离散语言输入的一部分。
             discretized_state = np.digitize(state, bins=np.linspace(-1, 1, 256 + 1)[:-1]) - 1
             state_str = " ".join(map(str, discretized_state))
             full_prompt = f"Task: {cleaned_text}, State: {state_str};\nAction: "
             tokens = self._tokenizer.encode(full_prompt, add_bos=True)
         else:
-            # This is the Pi0 format, where the state is part of the continuous action expert input.
-            # tokenize "\n" separately as the "start of answer" token
+            # 这是 Pi0 格式，其中状态是连续动作专家输入的一部分。
+            # 将 "\n" 单独分词，作为“答案起始”token
             tokens = self._tokenizer.encode(cleaned_text, add_bos=True) + self._tokenizer.encode("\n")
         tokens_len = len(tokens)
         if tokens_len < self._max_len:
@@ -52,34 +52,34 @@ class FASTTokenizer:
     def __init__(self, max_len: int = 256, fast_tokenizer_path: str = "physical-intelligence/fast"):
         self._max_len = max_len
 
-        # Download base PaliGemma tokenizer
+        # 下载基础 PaliGemma 分词器
         path = download.maybe_download("gs://big_vision/paligemma_tokenizer.model", gs={"token": "anon"})
         with path.open("rb") as f:
             self._paligemma_tokenizer = sentencepiece.SentencePieceProcessor(model_proto=f.read())
 
-        # Instantiate FAST tokenizer
+        # 实例化 FAST 分词器
         self._fast_tokenizer = AutoProcessor.from_pretrained(fast_tokenizer_path, trust_remote_code=True)
-        self._fast_skip_tokens = 128  # Skip last 128 tokens in PaliGemma vocab since they are special tokens
+        self._fast_skip_tokens = 128  # 跳过 PaliGemma 词表中的最后 128 个 token，因为它们是特殊 token
 
     def tokenize(
         self, prompt: str, state: np.ndarray, actions: np.ndarray | None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         cleaned_text = prompt.lower().strip().replace("_", " ")
 
-        # Convention: state gets discretized into 256 discrete bins (assumed range after normalization: [-1, 1])
+        # 约定：状态被离散化为 256 个离散分箱（归一化后假定范围：[-1, 1]）
         discretized_state = np.digitize(state, bins=np.linspace(-1, 1, 256 + 1)[:-1]) - 1
 
-        # Convention: prefix includes prompt and string-representation of state, followed by ';'
+        # 约定：前缀（prefix）包含提示词和状态的字符串表示，后面跟 ';'
         state_str = " ".join(map(str, discretized_state))
         prefix = f"Task: {cleaned_text}, State: {state_str};\n"
         prefix_tokens = self._paligemma_tokenizer.encode(prefix, add_bos=True)
 
         if actions is not None:
-            # Tokenize actions with FAST tokenizer --> map to last tokens in PaliGemma vocab
+            # 用 FAST 分词器对动作分词 --> 映射到 PaliGemma 词表中的最后一些 token
             action_tokens = self._fast_tokenizer(actions[None])[0]
             action_tokens_in_pg = self._act_tokens_to_paligemma_tokens(action_tokens)
 
-            # Convention: postfix contains 'Action:' followed by FAST tokens, followed by '|'
+            # 约定：后缀（postfix）包含 'Action:'，后跟 FAST token，再跟 '|'
             postfix_tokens = (
                 self._paligemma_tokenizer.encode("Action: ")
                 + action_tokens_in_pg.tolist()
@@ -88,14 +88,14 @@ class FASTTokenizer:
         else:
             postfix_tokens = []
 
-        # Create output token sequence & masks
-        # AR mask is 0 on prefix (bidirectional attention) and 1 on postfix (causal attention to all previous tokens)
+        # 创建输出 token 序列 & 掩码
+        # AR 掩码在前缀上为 0（双向注意力），在后缀上为 1（对所有前序 token 的因果注意力）
         tokens = prefix_tokens + postfix_tokens
         token_mask = [True] * len(tokens)
         ar_mask = [0] * len(prefix_tokens) + [1] * len(postfix_tokens)
-        loss_mask = [False] * len(prefix_tokens) + [True] * len(postfix_tokens)  # Loss on postfix only
+        loss_mask = [False] * len(prefix_tokens) + [True] * len(postfix_tokens)  # 仅在后缀上计算损失
 
-        # Pad tokens to max length
+        # 将 token 填充到最大长度
         tokens_len = len(tokens)
         if tokens_len < self._max_len:
             padding = [False] * (self._max_len - tokens_len)
@@ -117,14 +117,14 @@ class FASTTokenizer:
         return np.asarray(tokens), np.asarray(token_mask), np.asarray(ar_mask), np.asarray(loss_mask)
 
     def extract_actions(self, tokens: np.ndarray, action_horizon: int, action_dim: int) -> np.ndarray:
-        # Decode predicted output tokens
+        # 解码预测的输出 token
         decoded_tokens = self._paligemma_tokenizer.decode(tokens.tolist())
 
-        # Extract actions from FAST model outputs
+        # 从 FAST 模型的输出中提取动作
         if "Action: " not in decoded_tokens:
             return np.zeros((action_horizon, action_dim), dtype=np.float32)
 
-        # Extract actions from decoded tokens
+        # 从已解码的 token 中提取动作
         raw_action_tokens = np.array(
             self._paligemma_tokenizer.encode(decoded_tokens.split("Action: ")[1].split("|")[0].strip())
         )
@@ -140,49 +140,49 @@ class FASTTokenizer:
 
 
 ###########################################################################
-## The tokenizers below are used for RoboArena baseline implementations. ##
-## They are *not* used for pi0-style models.                             ##
+## 下方的分词器用于 RoboArena 基线实现。                                      ##
+## 它们 *不* 用于 pi0 风格的模型。                                          ##
 ###########################################################################
 
 
 class BinningTokenizer:
     """
-    Standard RT-2 / OpenVLA style binning tokenizer.
+    标准的 RT-2 / OpenVLA 风格分箱（binning）分词器。
     """
 
     def __init__(self, max_len: int = 256, n_bins: int = 256):
         self._max_len = max_len
         self._n_bins = n_bins
 
-        # Download base PaliGemma tokenizer
+        # 下载基础 PaliGemma 分词器
         path = download.maybe_download("gs://big_vision/paligemma_tokenizer.model", gs={"token": "anon"})
         with path.open("rb") as f:
             self._paligemma_tokenizer = sentencepiece.SentencePieceProcessor(model_proto=f.read())
 
-        self._fast_skip_tokens = 128  # Skip last 128 tokens in PaliGemma vocab since they are special tokens
+        self._fast_skip_tokens = 128  # 跳过 PaliGemma 词表中的最后 128 个 token，因为它们是特殊 token
 
     def tokenize(
         self, prompt: str, state: np.ndarray, actions: np.ndarray | None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Tokenize a prompt and state into a sequence of tokens.
+        """将提示词和状态分词为一个 token 序列。
 
         Args:
-            prompt: The text prompt to tokenize.
-            state: The state array to discretize and tokenize.
-            actions: Must be None. Action encoding is not currently supported.
+            prompt: 需要分词的文本提示。
+            state: 需要离散化并分词的状态数组。
+            actions: 必须为 None。目前不支持动作编码。
 
         Returns:
-            A tuple of (tokens, token_mask, ar_mask, targets).
+            一个元组 (tokens, token_mask, ar_mask, targets)。
 
         Raises:
-            NotImplementedError: If actions is not None.
+            NotImplementedError: 若 actions 不为 None。
         """
         cleaned_text = prompt.lower().strip().replace("_", " ")
 
-        # Convention: state gets discretized into 256 discrete bins (assumed range after normalization: [-1, 1])
+        # 约定：状态被离散化为 256 个离散分箱（归一化后假定范围：[-1, 1]）
         discretized_state = np.digitize(state, bins=np.linspace(-1, 1, 256 + 1)[:-1]) - 1
 
-        # Convention: prefix includes prompt and string-representation of state, followed by ';'
+        # 约定：前缀（prefix）包含提示词和状态的字符串表示，后面跟 ';'
         state_str = " ".join(map(str, discretized_state))
         prefix = f"Task: {cleaned_text}, State: {state_str};\n"
         prefix_tokens = self._paligemma_tokenizer.encode(prefix, add_bos=True)
@@ -191,14 +191,14 @@ class BinningTokenizer:
             raise NotImplementedError("BinningTokenizer does not support encoding actions atm (only for inference use)")
         postfix_tokens = []
 
-        # Create output token sequence & masks
-        # AR mask is 0 on prefix (bidirectional attention) and 1 on postfix (causal attention to all previous tokens)
+        # 创建输出 token 序列 & 掩码
+        # AR 掩码在前缀上为 0（双向注意力），在后缀上为 1（对所有前序 token 的因果注意力）
         tokens = prefix_tokens + postfix_tokens
         token_mask = [True] * len(tokens)
         ar_mask = [0] * len(prefix_tokens) + [1] * len(postfix_tokens)
-        loss_mask = [False] * len(prefix_tokens) + [True] * len(postfix_tokens)  # Loss on postfix only
+        loss_mask = [False] * len(prefix_tokens) + [True] * len(postfix_tokens)  # 仅在后缀上计算损失
 
-        # Pad tokens to max length
+        # 将 token 填充到最大长度
         tokens_len = len(tokens)
         if tokens_len < self._max_len:
             padding = [False] * (self._max_len - tokens_len)
@@ -220,14 +220,14 @@ class BinningTokenizer:
         return np.asarray(tokens), np.asarray(token_mask), np.asarray(ar_mask), np.asarray(loss_mask)
 
     def extract_actions(self, tokens: np.ndarray, action_horizon: int, action_dim: int) -> np.ndarray:
-        # Decode predicted output tokens
+        # 解码预测的输出 token
         decoded_tokens = self._paligemma_tokenizer.decode(tokens.tolist())
 
-        # Extract actions from FAST model outputs
+        # 从 FAST 模型的输出中提取动作
         if "Action: " not in decoded_tokens:
             return np.zeros((action_horizon, action_dim), dtype=np.float32)
 
-        # Extract actions from decoded tokens
+        # 从已解码的 token 中提取动作
         raw_action_tokens = np.array(
             self._paligemma_tokenizer.encode(decoded_tokens.split("Action: ")[1].split("|")[0].strip())
         )
@@ -245,18 +245,18 @@ class BinningTokenizer:
 
 class FSQTokenizer:
     """
-    FSQ tokenizer from the FAST paper baselines.
+    来自 FAST 论文基线的 FSQ 分词器。
     """
 
     def __init__(self, max_len: int = 256, fsq_tokenizer_path: str | None = None):
         self._max_len = max_len
 
         assert fsq_tokenizer_path is not None, "fsq_tokenizer_path must be provided"
-        # Download tokenizer
+        # 下载分词器
         path = download.maybe_download(fsq_tokenizer_path)
         tok_path = os.path.join(path, os.listdir(path)[0])
 
-        # Split step from path
+        # 从 path 中拆分出 step
         step = int(tok_path.split("/")[-1])
         base_path = tok_path.rsplit("/", 1)[0]
 
@@ -282,7 +282,7 @@ class FSQTokenizer:
                 f"Failed to load FSQ tokenizer checkpoint from {fsq_tokenizer_path}. Error: {e!s}"
             ) from e
 
-        # Compile tokenize and detokenize functions
+        # 编译 tokenize 和 detokenize 函数
         self._tokenize_fn = jax.jit(
             lambda params, x: self._fsq_tokenizer.apply({"params": params}, x, method=self._fsq_tokenizer.tokenize)
         )
@@ -290,22 +290,22 @@ class FSQTokenizer:
             lambda params, x: self._fsq_tokenizer.apply({"params": params}, x, method=self._fsq_tokenizer.detokenize)
         )
 
-        # Download base PaliGemma tokenizer
+        # 下载基础 PaliGemma 分词器
         path = download.maybe_download("gs://big_vision/paligemma_tokenizer.model", gs={"token": "anon"})
         with path.open("rb") as f:
             self._paligemma_tokenizer = sentencepiece.SentencePieceProcessor(model_proto=f.read())
 
-        self._fast_skip_tokens = 128  # Skip last 128 tokens in PaliGemma vocab since they are special tokens
+        self._fast_skip_tokens = 128  # 跳过 PaliGemma 词表中的最后 128 个 token，因为它们是特殊 token
 
     def tokenize(
         self, prompt: str, state: np.ndarray, actions: np.ndarray | None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         cleaned_text = prompt.lower().strip().replace("_", " ")
 
-        # Convention: state gets discretized into 256 discrete bins (assumed range after normalization: [-1, 1])
+        # 约定：状态被离散化为 256 个离散分箱（归一化后假定范围：[-1, 1]）
         discretized_state = np.digitize(state, bins=np.linspace(-1, 1, 256 + 1)[:-1]) - 1
 
-        # Convention: prefix includes prompt and string-representation of state, followed by ';'
+        # 约定：前缀（prefix）包含提示词和状态的字符串表示，后面跟 ';'
         state_str = " ".join(map(str, discretized_state))
         prefix = f"Task: {cleaned_text}, State: {state_str};\n"
         prefix_tokens = self._paligemma_tokenizer.encode(prefix, add_bos=True)
@@ -314,14 +314,14 @@ class FSQTokenizer:
             raise NotImplementedError("FSQTokenizer does not support encoding actions atm (only for inference use)")
         postfix_tokens = []
 
-        # Create output token sequence & masks
-        # AR mask is 0 on prefix (bidirectional attention) and 1 on postfix (causal attention to all previous tokens)
+        # 创建输出 token 序列 & 掩码
+        # AR 掩码在前缀上为 0（双向注意力），在后缀上为 1（对所有前序 token 的因果注意力）
         tokens = prefix_tokens + postfix_tokens
         token_mask = [True] * len(tokens)
         ar_mask = [0] * len(prefix_tokens) + [1] * len(postfix_tokens)
-        loss_mask = [False] * len(prefix_tokens) + [True] * len(postfix_tokens)  # Loss on postfix only
+        loss_mask = [False] * len(prefix_tokens) + [True] * len(postfix_tokens)  # 仅在后缀上计算损失
 
-        # Pad tokens to max length
+        # 将 token 填充到最大长度
         tokens_len = len(tokens)
         if tokens_len < self._max_len:
             padding = [False] * (self._max_len - tokens_len)
@@ -343,20 +343,20 @@ class FSQTokenizer:
         return np.asarray(tokens), np.asarray(token_mask), np.asarray(ar_mask), np.asarray(loss_mask)
 
     def extract_actions(self, tokens: np.ndarray, action_horizon: int, action_dim: int) -> np.ndarray:
-        # Decode predicted output tokens
+        # 解码预测的输出 token
         decoded_tokens = self._paligemma_tokenizer.decode(tokens.tolist())
 
-        # Extract actions from FAST model outputs
+        # 从 FAST 模型的输出中提取动作
         if "Action: " not in decoded_tokens:
             return np.zeros((action_horizon, action_dim), dtype=np.float32)
 
-        # Extract actions from decoded tokens
+        # 从已解码的 token 中提取动作
         raw_action_tokens = np.array(
             self._paligemma_tokenizer.encode(decoded_tokens.split("Action: ")[1].split("|")[0].strip())
         )
         action_tokens = self._act_tokens_to_paligemma_tokens(raw_action_tokens)
         try:
-            # Move computation to CPU and compile on-demand
+            # 将计算移到 CPU 并按需编译
             device = jax.devices("cpu")[0]
             with jax.default_device(device):
                 detok_act = self._detokenize_fn(self._params, action_tokens[None, ...])[0]

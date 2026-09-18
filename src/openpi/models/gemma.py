@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gemma adaptation for Pi, taken from big_vision.
+"""来自 big_vision 的、为 Pi 改编的 Gemma。
 
-We follow this einsum axis naming convention:
-  B: batch
-  T: query length
-  S: k/v length
-  N: num query heads
-  K: num k/v heads
-  G: num query heads per k/v head
-  H: head dim
-  D: d_model ("features")
+我们遵循以下 einsum 轴命名约定：
+  B: 批次
+  T: query 长度
+  S: k/v 长度
+  N: query 头数
+  K: k/v 头数
+  G: 每个 k/v 头对应的 query 头数
+  H: head 维度
+  D: d_model（"features"）
 """
 
 from collections.abc import Sequence
@@ -56,7 +56,7 @@ Variant = Literal["dummy", "gemma_300m", "gemma_300m_lora", "gemma_2b", "gemma_2
 
 
 def get_config(variant: Variant) -> Config:
-    """Returns config for specified gemma variant."""
+    """返回指定 gemma 变体的配置。"""
     if variant == "dummy":
         return Config(
             width=64,
@@ -67,7 +67,7 @@ def get_config(variant: Variant) -> Config:
             head_dim=16,
         )
     if variant == "gemma_300m":
-        # 311M params
+        # 3.11 亿（311M）个参数
         return Config(
             width=1024,
             depth=18,
@@ -96,7 +96,7 @@ def get_config(variant: Variant) -> Config:
             lora_configs={"attn": lora.LoRAConfig(rank=16, alpha=16.0), "ffn": lora.LoRAConfig(rank=16, alpha=16.0)},
         )
     if variant == "gemma_300m_lora":
-        # 311M params
+        # 3.11 亿（311M）个参数
         return Config(
             width=1024,
             depth=18,
@@ -113,27 +113,27 @@ def get_config(variant: Variant) -> Config:
 class RMSNorm(nn.Module):
     @nn.compact
     def __call__(self, x, cond):
-        dtype = x.dtype  # original dtype, could be half-precision
-        var = jnp.mean(jnp.square(x.astype(jnp.float32)), axis=-1, keepdims=True)  # compute variance in float32
-        normed_inputs = jnp.asarray(x * jnp.reciprocal(jnp.sqrt(var + 1e-06)))  # compute normalization in float32
+        dtype = x.dtype  # 原始 dtype，可能是半精度
+        var = jnp.mean(jnp.square(x.astype(jnp.float32)), axis=-1, keepdims=True)  # 在 float32 中计算方差
+        normed_inputs = jnp.asarray(x * jnp.reciprocal(jnp.sqrt(var + 1e-06)))  # 在 float32 中计算归一化
         if cond is None:
-            # regular RMSNorm
+            # 常规 RMSNorm
             scale = self.param("scale", nn.initializers.zeros_init(), (x.shape[-1]))
             normed_inputs = normed_inputs * (
                 1 + scale
-            )  # scale by learned parameter in float32 (matches Flax implementation)
-            return normed_inputs.astype(dtype), None  # return in original dtype
+            )  # 在 float32 中用学习到的参数进行缩放（与 Flax 实现一致）
+            return normed_inputs.astype(dtype), None  # 以原始 dtype 返回
 
-        # adaptive RMSNorm
+        # 自适应 RMSNorm
         modulation = nn.Dense(x.shape[-1] * 3, kernel_init=nn.initializers.zeros, dtype=dtype)(cond)
         scale, shift, gate = jnp.split(modulation[:, None, :], 3, axis=-1)
-        normed_inputs = normed_inputs * (1 + scale) + shift  # scale and shift in float32
+        normed_inputs = normed_inputs * (1 + scale) + shift  # 在 float32 中进行缩放和平移
         return normed_inputs.astype(dtype), gate
 
 
 @at.typecheck
 class Embedder(nn.Module):
-    """Embedder module."""
+    """嵌入（Embedder）模块。"""
 
     vocab_size: int
     embed_dim: int
@@ -156,18 +156,18 @@ class Embedder(nn.Module):
 
 @at.typecheck
 class Attention(nn.Module):
-    """Attention module."""
+    """注意力（Attention）模块。"""
 
     configs: Sequence[Config]
 
     @nn.compact
     def __call__(self, xs, positions, attn_mask, kv_cache):
-        # all experts must share the same head dim, num heads, and num kv heads for self-attention to work
+        # 所有专家（expert）必须共享相同的 head 维度、头数和 kv 头数，自注意力才能正常工作
         assert all(config.head_dim == self.configs[0].head_dim for config in self.configs)
         assert all(config.num_heads == self.configs[0].num_heads for config in self.configs)
         assert all(config.num_kv_heads == self.configs[0].num_kv_heads for config in self.configs)
 
-        dtype = next(x.dtype for x in xs if x is not None)  # original dtype, could be half-precision
+        dtype = next(x.dtype for x in xs if x is not None)  # 原始 dtype，可能是半精度
 
         qkvs = []
         for i, (x, config) in enumerate(zip(xs, self.configs, strict=True)):
@@ -205,7 +205,7 @@ class Attention(nn.Module):
 
         k = _apply_rope(k, positions=positions)
 
-        # should still be half-precision here (if input was half-precision)
+        # 此处应仍为半精度（若输入为半精度）
         assert q.dtype == k.dtype == v.dtype == dtype
 
         if kv_cache is not None:
@@ -222,7 +222,7 @@ class Attention(nn.Module):
             )
 
         # big_neg = jnp.finfo(logits.dtype).min
-        big_neg = -2.3819763e38  # See gemma/modules.py
+        big_neg = -2.3819763e38  # 见 gemma/modules.py
         masked_logits = jnp.where(attn_mask[:, :, None, :, :], logits, big_neg)
 
         probs = jax.nn.softmax(masked_logits, axis=-1).astype(dtype)
@@ -251,14 +251,14 @@ class Attention(nn.Module):
 
 @at.typecheck
 class FeedForward(nn.Module):
-    """Feed forward module."""
+    """前馈（Feed forward）模块。"""
 
     features: int
     hidden_dim: int
 
     @nn.compact
     def __call__(self, x):
-        dtype = x.dtype  # original dtype, could be half-precision
+        dtype = x.dtype  # 原始 dtype，可能是半精度
         w_gating = self.param(
             "gating_einsum",
             nn.initializers.lecun_normal(in_axis=-2, out_axis=-1, batch_axis=(0,)),
@@ -282,7 +282,7 @@ class FeedForward(nn.Module):
 
 @at.typecheck
 class Block(nn.Module):
-    """Transformer block."""
+    """Transformer 块。"""
 
     configs: tuple[Config, ...]
 
@@ -338,22 +338,22 @@ KVCache: TypeAlias = tuple[at.Float[at.Array, "l b _t _k _h"], at.Float[at.Array
 
 @at.typecheck
 class Module(nn.Module):
-    """Transformer model, supporting a mixture of different weights for different tokens."""
+    """Transformer 模型，支持为不同 token 使用不同权重的混合。"""
 
-    configs: Sequence[Config]  # list of configs, one for each expert
+    configs: Sequence[Config]  # 配置列表，每个专家对应一个
     embed_dtype: str
 
     dropout: float = 0.0
-    dropout_bdims: tuple[int, ...] = ()  # Every float is dropped independently.
+    dropout_bdims: tuple[int, ...] = ()  # 每个 float 都独立地被丢弃。
     adarms: bool = False
 
     def setup(self):
-        # all experts must have the same depth
+        # 所有专家必须具有相同的深度
         assert all(config.depth == self.configs[0].depth for config in self.configs)
 
         self.embedder = Embedder(
             vocab_size=PALIGEMMA_VOCAB_SIZE,
-            embed_dim=self.configs[0].width,  # embedder for first expert only
+            embed_dim=self.configs[0].width,  # 仅为第一个专家使用 embedder
             name="embedder",
         )
         block_cls = nn.remat(
@@ -388,7 +388,7 @@ class Module(nn.Module):
     @at.typecheck
     def __call__(
         self,
-        # list of token arrays, one for each expert, or None if that expert should not be run
+        # 每个专家对应一个 token 数组的列表，若某个专家不应运行则为 None
         embedded: Sequence[at.Float[at.Array, "b _t _d"] | None],
         positions: at.Int[at.Array, "b t"],
         mask: at.Bool[at.Array, "b t s"],
@@ -411,7 +411,7 @@ class Module(nn.Module):
         ], kv_cache
 
     def init(self, use_adarms: Sequence[bool]):
-        """Convenience method for initializing all parameters, necessary due to the quirks of linen."""
+        """初始化所有参数的便捷方法，由于 linen 的若干怪癖而有必要存在。"""
         self.embed(jnp.zeros((1, 1), dtype=jnp.int32))
         self(
             [jnp.zeros((1, 1, c.width)) for c in self.configs],
@@ -422,7 +422,7 @@ class Module(nn.Module):
 
 
 def _apply_rope(x, *, positions, max_wavelength=10_000):
-    """Applies RoPE positions [B, L] to x [B, L, H, D]."""
+    """将 RoPE 位置 [B, L] 应用于 x [B, L, H, D]。"""
     freq_exponents = (2.0 / x.shape[-1]) * jnp.arange(x.shape[-1] // 2, dtype=jnp.float32)
     timescale = max_wavelength**freq_exponents
     radians = positions[..., None] / timescale[None, None, :]
@@ -433,18 +433,16 @@ def _apply_rope(x, *, positions, max_wavelength=10_000):
     x1, x2 = jnp.split(x, 2, axis=-1)
     res = jnp.concatenate([x1 * cos - x2 * sin, x2 * cos + x1 * sin], axis=-1)
     assert res.dtype == jnp.float32
-    # The original bigvision impl allows RoPE to upcast to float32. It is then immediately downcast again to the cache
-    # dtype when in inference mode (but not in training mode). I don't think any of this was intentional. Based on the
-    # original DeepMind impl, as well as the widely-used transformers impl, it is ok to always downcast back to bfloat16
-    # here.
+    # 原始的 bigvision 实现允许 RoPE 上转（upcast）为 float32，随后在推理模式（而非训练模式）下立即下转回缓存
+    # dtype。我认为这些并非有意为之。根据原始的 DeepMind 实现，以及广泛使用的 transformers 实现，在此处
+    # 始终下转回 bfloat16 是可以的。
     return res.astype(x.dtype)
 
 
 def _name(name, i):
-    # we name layers like this because we want the first expert's weights to have no suffix (e.g., "attn"), so that they
-    # can be loaded seamlessly from the existing PaliGemma checkpoint. subsequent experts will have a suffix (e.g.,
-    # "attn_1") and their weights will be initialized from scratch. in practice, we only use two experts -- PaliGemma,
-    # and the action expert.
+    # 我们采用这样的层命名方式：希望第一个专家的权重没有后缀（例如 "attn"），以便它们能从现有的
+    # PaliGemma 检查点无缝加载。后续专家会有后缀（例如 "attn_1"），其权重会从头初始化。实际上，我们
+    # 只使用两个专家——PaliGemma 和动作专家（action expert）。
     if i == 0:
         return name
     return f"{name}_{i}"

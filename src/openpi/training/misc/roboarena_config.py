@@ -1,4 +1,4 @@
-"""RoboArena baseline policy configs."""
+"""RoboArena 基准策略配置。"""
 
 from typing import TypeAlias
 
@@ -13,7 +13,7 @@ ModelType: TypeAlias = _model.ModelType
 
 
 def get_roboarena_configs():
-    # Import here to avoid circular imports.
+    # 在此处导入以避免循环导入。
     from openpi.training.config import AssetsConfig
     from openpi.training.config import DataConfig
     from openpi.training.config import SimpleDataConfig
@@ -21,10 +21,10 @@ def get_roboarena_configs():
 
     return [
         #
-        # RoboArena DROID baseline inference configs.
+        # RoboArena DROID 基线推理配置。
         #
         TrainConfig(
-            # Trained from PaliGemma, using RT-2 / OpenVLA style binning tokenizer.
+            # 从 PaliGemma 训练而来，使用 RT-2 / OpenVLA 风格的分箱（binning）tokenizer。
             name="paligemma_binning_droid",
             model=pi0_fast.Pi0FASTConfig(
                 action_dim=8,
@@ -44,7 +44,7 @@ def get_roboarena_configs():
             ),
         ),
         TrainConfig(
-            # Trained from PaliGemma, using FAST tokenizer (using universal FAST+ tokenizer).
+            # 从 PaliGemma 训练而来，使用 FAST tokenizer（使用通用 FAST+ tokenizer）。
             name="paligemma_fast_droid",
             model=pi0_fast.Pi0FASTConfig(action_dim=8, action_horizon=15),
             data=SimpleDataConfig(
@@ -59,7 +59,7 @@ def get_roboarena_configs():
             ),
         ),
         TrainConfig(
-            # Trained from PaliGemma, using FAST tokenizer (tokenizer trained on DROID dataset).
+            # 从 PaliGemma 训练而来，使用 FAST tokenizer（tokenizer 在 DROID 数据集上训练）。
             name="paligemma_fast_specialist_droid",
             model=pi0_fast.Pi0FASTConfig(
                 action_dim=8,
@@ -79,7 +79,7 @@ def get_roboarena_configs():
             ),
         ),
         TrainConfig(
-            # Trained from PaliGemma, using FSQ tokenizer.
+            # 从 PaliGemma 训练而来，使用 FSQ tokenizer。
             name="paligemma_vq_droid",
             model=pi0_fast.Pi0FASTConfig(
                 action_dim=8,
@@ -99,7 +99,7 @@ def get_roboarena_configs():
             ),
         ),
         TrainConfig(
-            # pi0-style diffusion / flow VLA, trained on DROID from PaliGemma.
+            # pi0 风格的扩散 / 流（flow）VLA，在 DROID 上从 PaliGemma 训练而来。
             name="paligemma_diffusion_droid",
             model=pi0_config.Pi0Config(action_horizon=10, action_dim=8),
             data=SimpleDataConfig(

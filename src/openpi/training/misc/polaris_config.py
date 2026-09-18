@@ -1,4 +1,4 @@
-"""PolaRiS baseline policy configs."""
+"""PolaRiS 基准策略配置。"""
 
 from typing import TypeAlias
 
@@ -16,7 +16,7 @@ ModelType: TypeAlias = _model.ModelType
 
 
 def get_polaris_configs():
-    # Import here to avoid circular imports.
+    # 在此处导入以避免循环导入。
     from openpi.training.config import AssetsConfig
     from openpi.training.config import RLDSDroidDataConfig
     from openpi.training.config import SimpleDataConfig
@@ -24,7 +24,7 @@ def get_polaris_configs():
 
     return [
         #
-        # PolaRiS DROID jointpos policies
+        # PolaRiS DROID jointpos 策略
         #
         TrainConfig(
             name="pi05_droid_jointpos_polaris",
@@ -65,7 +65,7 @@ def get_polaris_configs():
             log_interval=100,
             save_interval=1000,
             keep_period=1000,
-            num_workers=0,  # Important: RLDS DataLoader requires num_workers=0, handles multi-processing internally
+            num_workers=0,  # 重要：RLDS DataLoader 要求 num_workers=0，它在内部处理多进程
         ),
         TrainConfig(
             name="pi0_fast_droid_jointpos_polaris",
@@ -110,7 +110,7 @@ def get_polaris_configs():
             log_interval=100,
             save_interval=1000,
             keep_period=1000,
-            num_workers=0,  # Important: RLDS DataLoader requires num_workers=0, handles multi-processing internally
+            num_workers=0,  # 重要：RLDS DataLoader 要求 num_workers=0，它在内部处理多进程
         ),
         TrainConfig(
             name="pi0_droid_jointpos_polaris",
@@ -155,7 +155,7 @@ def get_polaris_configs():
             log_interval=100,
             save_interval=1000,
             keep_period=1000,
-            num_workers=0,  # Important: RLDS DataLoader requires num_workers=0, handles multi-processing internally
+            num_workers=0,  # 重要：RLDS DataLoader 要求 num_workers=0，它在内部处理多进程
         ),
         TrainConfig(
             name="pi0_droid_jointpos_100k_polaris",
@@ -200,9 +200,9 @@ def get_polaris_configs():
             log_interval=100,
             save_interval=1000,
             keep_period=1000,
-            num_workers=0,  # Important: RLDS DataLoader requires num_workers=0, handles multi-processing internally
+            num_workers=0,  # 重要：RLDS DataLoader 要求 num_workers=0，它在内部处理多进程
         ),
-        # openpi doesn't support finetuning of binning policies, so this is an inference-only config
+        # openpi 不支持对分箱（binning）策略进行微调，所以这是一个仅用于推理的配置
         TrainConfig(
             name="paligemma_binning_droid_jointpos",
             model=pi0_fast.Pi0FASTConfig(

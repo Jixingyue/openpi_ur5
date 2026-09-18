@@ -15,7 +15,7 @@ import fsspec
 import fsspec.generic
 import tqdm_loggable.auto as tqdm
 
-# Environment variable to control cache directory path, ~/.cache/openpi will be used by default.
+# 用于控制缓存目录路径的环境变量，默认使用 ~/.cache/openpi。
 _OPENPI_DATA_HOME = "OPENPI_DATA_HOME"
 DEFAULT_CACHE_DIR = "~/.cache/openpi"
 
@@ -30,25 +30,25 @@ def get_cache_dir() -> pathlib.Path:
 
 
 def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathlib.Path:
-    """Download a file or directory from a remote filesystem to the local cache, and return the local path.
+    """从远程文件系统下载文件或目录到本地缓存，并返回本地路径。
 
-    If the local file already exists, it will be returned directly.
+    若本地文件已存在，则直接返回。
 
-    It is safe to call this function concurrently from multiple processes.
-    See `get_cache_dir` for more details on the cache directory.
+    在多个进程中并发调用此函数是安全的。
+    关于缓存目录的更多细节见 `get_cache_dir`。
 
     Args:
-        url: URL to the file to download.
-        force_download: If True, the file will be downloaded even if it already exists in the cache.
-        **kwargs: Additional arguments to pass to fsspec.
+        url: 待下载文件的 URL。
+        force_download: 若为 True，即使文件已存在于缓存中也会重新下载。
+        **kwargs: 传递给 fsspec 的额外参数。
 
     Returns:
-        Local path to the downloaded file or directory. That path is guaranteed to exist and is absolute.
+        已下载文件或目录的本地路径。该路径保证存在且为绝对路径。
     """
-    # Don't use fsspec to parse the url to avoid unnecessary connection to the remote filesystem.
+    # 不使用 fsspec 来解析 url，以避免与远程文件系统建立不必要的连接。
     parsed = urllib.parse.urlparse(url)
 
-    # Short circuit if this is a local path.
+    # 若这是本地路径，则短路返回。
     if parsed.scheme == "":
         path = pathlib.Path(url)
         if not path.exists():
@@ -60,7 +60,7 @@ def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathl
     local_path = cache_dir / parsed.netloc / parsed.path.strip("/")
     local_path = local_path.resolve()
 
-    # Check if the cache should be invalidated.
+    # 检查缓存是否需要失效。
     invalidate_cache = False
     if local_path.exists():
         if force_download or _should_invalidate_cache(cache_dir, local_path):
@@ -71,9 +71,9 @@ def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathl
     try:
         lock_path = local_path.with_suffix(".lock")
         with filelock.FileLock(lock_path):
-            # Ensure consistent permissions for the lock file.
+            # 确保锁文件的权限一致。
             _ensure_permissions(lock_path)
-            # First, remove the existing cache if it is expired.
+            # 首先，若现有缓存已过期，则将其移除。
             if invalidate_cache:
                 logger.info(f"Removing expired cached entry: {local_path}")
                 if local_path.is_dir():
@@ -82,11 +82,11 @@ def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathl
                     local_path.unlink()
 
             if not local_path.exists():
-                # Download the data to a local cache.
+                # 将数据下载到本地缓存。
                 logger.info(f"Downloading {url} to {local_path}")
                 scratch_path = local_path.with_suffix(".partial")
-                # Route openpi-assets through gsutil to avoid gcsfs auth issues with this bucket.
-                # All other gs:// URLs (e.g. big_vision) continue to use gcsfs as normal.
+                # 让 openpi-assets 通过 gsutil 下载，以避免该桶的 gcsfs 认证问题。
+                # 所有其他 gs:// URL（例如 big_vision）仍照常使用 gcsfs。
                 if parsed.scheme == "gs" and parsed.netloc == "openpi-assets":
                     _download_gsutil(url, scratch_path, **kwargs)
                 else:
@@ -106,7 +106,7 @@ def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathl
 
 
 def _download_gsutil(url: str, local_path: pathlib.Path, **kwargs) -> None:
-    """Download a file or directory from GCS using gsutil if available, otherwise fall back to gcsfs."""
+    """若可用则使用 gsutil 从 GCS 下载文件或目录，否则回退到 gcsfs。"""
     if shutil.which("gsutil") is None:
         logger.warning(
             "gsutil not found, falling back to gcsfs. This may fail if GCP credentials are not configured correctly."
@@ -121,10 +121,10 @@ def _download_gsutil(url: str, local_path: pathlib.Path, **kwargs) -> None:
 
 
 def _download_fsspec(url: str, local_path: pathlib.Path, **kwargs) -> None:
-    """Download a file from a remote filesystem to the local cache, and return the local path."""
+    """从远程文件系统下载文件到本地缓存，并返回本地路径。"""
     fs, _ = fsspec.core.url_to_fs(url, **kwargs)
     info = fs.info(url)
-    # Folders are represented by 0-byte objects with a trailing forward slash.
+    # 目录由以斜杠结尾的 0 字节对象表示。
     if is_dir := (info["type"] == "directory" or (info["size"] == 0 and info["name"].endswith("/"))):
         total_size = fs.du(url)
     else:
@@ -140,7 +140,7 @@ def _download_fsspec(url: str, local_path: pathlib.Path, **kwargs) -> None:
 
 
 def _set_permission(path: pathlib.Path, target_permission: int):
-    """chmod requires executable permission to be set, so we skip if the permission is already match with the target."""
+    """chmod 要求同时设置可执行权限，因此若权限已与目标匹配则跳过。"""
     if path.stat().st_mode & target_permission == target_permission:
         logger.debug(f"Skipping {path} because it already has correct permissions")
         return
@@ -149,13 +149,12 @@ def _set_permission(path: pathlib.Path, target_permission: int):
 
 
 def _set_folder_permission(folder_path: pathlib.Path) -> None:
-    """Set folder permission to be read, write and searchable."""
+    """将文件夹权限设置为可读、可写且可搜索。"""
     _set_permission(folder_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
 
 def _ensure_permissions(path: pathlib.Path) -> None:
-    """Since we are sharing cache directory with containerized runtime as well as training script, we need to
-    ensure that the cache directory has the correct permissions.
+    """由于我们会与容器化运行时以及训练脚本共享缓存目录，因此需要确保缓存目录具有正确的权限。
     """
 
     def _setup_folder_permission_between_cache_dir_and_path(path: pathlib.Path) -> None:
@@ -167,7 +166,7 @@ def _ensure_permissions(path: pathlib.Path) -> None:
             moving_path = moving_path / part
 
     def _set_file_permission(file_path: pathlib.Path) -> None:
-        """Set all files to be read & writable, if it is a script, keep it as a script."""
+        """将所有文件设置为可读可写；若它本身是脚本，则保持其脚本属性。"""
         file_rw = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH
         if file_path.stat().st_mode & 0o100:
             _set_permission(file_path, file_rw | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -187,14 +186,14 @@ def _ensure_permissions(path: pathlib.Path) -> None:
 
 
 def _get_mtime(year: int, month: int, day: int) -> float:
-    """Get the mtime of a given date at midnight UTC."""
+    """获取给定日期在 UTC 午夜时分的 mtime。"""
     date = datetime.datetime(year, month, day, tzinfo=datetime.UTC)
     return time.mktime(date.timetuple())
 
 
-# Map of relative paths, defined as regular expressions, to expiration timestamps (mtime format).
-# Partial matching will be used from top to bottom and the first match will be chosen.
-# Cached entries will be retained only if they are newer than the expiration timestamp.
+# 将相对路径（以正则表达式定义）映射到失效时间戳（mtime 格式）。
+# 会自上而下进行部分匹配，并选择第一个匹配项。
+# 缓存条目仅在其比失效时间戳更新时才会被保留。
 _INVALIDATE_CACHE_DIRS: dict[re.Pattern, float] = {
     re.compile("openpi-assets/checkpoints/pi0_aloha_pen_uncap"): _get_mtime(2025, 2, 17),
     re.compile("openpi-assets/checkpoints/pi0_libero"): _get_mtime(2025, 2, 6),
@@ -203,14 +202,14 @@ _INVALIDATE_CACHE_DIRS: dict[re.Pattern, float] = {
 
 
 def _should_invalidate_cache(cache_dir: pathlib.Path, local_path: pathlib.Path) -> bool:
-    """Invalidate the cache if it is expired. Return True if the cache was invalidated."""
+    """若缓存已过期则使其失效。若缓存被失效则返回 True。"""
 
     assert local_path.exists(), f"File not found at {local_path}"
 
     relative_path = str(local_path.relative_to(cache_dir))
     for pattern, expire_time in _INVALIDATE_CACHE_DIRS.items():
         if pattern.match(relative_path):
-            # Remove if not newer than the expiration timestamp.
+            # 若不比失效时间戳更新，则移除。
             return local_path.stat().st_mtime <= expire_time
 
     return False

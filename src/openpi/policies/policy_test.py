@@ -24,7 +24,7 @@ def test_broker():
 
     broker = action_chunk_broker.ActionChunkBroker(
         policy,
-        # Only execute the first half of the chunk.
+        # 只执行该 chunk 的前一半。
         action_horizon=config.model.action_horizon // 2,
     )
 

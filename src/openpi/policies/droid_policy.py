@@ -8,7 +8,7 @@ from openpi.models import model as _model
 
 
 def make_droid_example() -> dict:
-    """Creates a random input example for the Droid policy."""
+    """为 Droid 策略创建一个随机的输入示例。"""
     return {
         "observation/exterior_image_1_left": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
         "observation/wrist_image_left": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
@@ -29,18 +29,18 @@ def _parse_image(image) -> np.ndarray:
 
 @dataclasses.dataclass(frozen=True)
 class DroidInputs(transforms.DataTransformFn):
-    # Determines which model will be used.
+    # 决定将使用哪个模型。
     model_type: _model.ModelType
 
     def __call__(self, data: dict) -> dict:
         gripper_pos = np.asarray(data["observation/gripper_position"])
         if gripper_pos.ndim == 0:
-            # Ensure gripper position is a 1D array, not a scalar, so we can concatenate with joint positions
+            # 确保夹爪位置是一个 1D 数组而非标量，以便与关节位置拼接
             gripper_pos = gripper_pos[np.newaxis]
         state = np.concatenate([data["observation/joint_position"], gripper_pos])
 
-        # Possibly need to parse images to uint8 (H,W,C) since LeRobot automatically
-        # stores as float32 (C,H,W), gets skipped for policy inference
+        # 可能需要将图像解析为 uint8 (H,W,C)，因为 LeRobot 会自动
+        # 将其存储为 float32 (C,H,W)，在策略推理时会被跳过
         base_image = _parse_image(data["observation/exterior_image_1_left"])
         wrist_image = _parse_image(data["observation/wrist_image_left"])
 
@@ -51,7 +51,7 @@ class DroidInputs(transforms.DataTransformFn):
                 image_masks = (np.True_, np.True_, np.False_)
             case _model.ModelType.PI0_FAST:
                 names = ("base_0_rgb", "base_1_rgb", "wrist_0_rgb")
-                # We don't mask out padding images for FAST models.
+                # 对于 FAST 模型，我们不会掩蔽填充图像。
                 images = (base_image, np.zeros_like(base_image), wrist_image)
                 image_masks = (np.True_, np.True_, np.True_)
             case _:
@@ -77,5 +77,5 @@ class DroidInputs(transforms.DataTransformFn):
 @dataclasses.dataclass(frozen=True)
 class DroidOutputs(transforms.DataTransformFn):
     def __call__(self, data: dict) -> dict:
-        # Only return the first 8 dims.
+        # 只返回前 8 个维度。
         return {"actions": np.asarray(data["actions"][:, :8])}

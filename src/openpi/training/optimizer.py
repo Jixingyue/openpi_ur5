@@ -14,7 +14,7 @@ class LRScheduleConfig(Protocol):
 
 @dataclasses.dataclass(frozen=True)
 class CosineDecaySchedule(LRScheduleConfig):
-    """Cosine decay schedule with warmup."""
+    """带预热的余弦退火调度。"""
 
     warmup_steps: int = 1_000
     peak_lr: float = 2.5e-5
@@ -33,7 +33,7 @@ class CosineDecaySchedule(LRScheduleConfig):
 
 @dataclasses.dataclass(frozen=True)
 class RsqrtDecaySchedule(LRScheduleConfig):
-    """Inverse square root decay schedule with warmup."""
+    """带预热的平方根倒数退火调度。"""
 
     warmup_steps: int = 1_000
     peak_lr: float = 5e-5
@@ -64,12 +64,12 @@ class OptimizerConfig(Protocol):
 
 @dataclasses.dataclass(frozen=True)
 class AdamW(OptimizerConfig):
-    """AdamW optimizer."""
+    """AdamW 优化器。"""
 
     b1: float = 0.9
     b2: float = 0.95
     eps: float = 1e-8
-    # Changing this to 0 can cause out-of-memory errors for some reason, so we set it to a negligible value.
+    # 出于某些原因，将其改为 0 会导致内存耗尽（OOM）错误，所以我们将它设为一个可忽略的值。
     weight_decay: float = 1e-10
     clip_gradient_norm: float = 1.0
 
@@ -87,7 +87,7 @@ class AdamW(OptimizerConfig):
 
 @dataclasses.dataclass(frozen=True)
 class SGD(OptimizerConfig):
-    """SGD optimizer."""
+    """SGD 优化器。"""
 
     lr: float = 5e-5
     momentum: float = 0.9

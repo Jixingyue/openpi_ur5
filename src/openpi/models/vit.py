@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""ViT implementation adapted from https://github.com/google-research/vision_transformer/blob/main/vit_jax/models_vit.py."""
+"""改编自 https://github.com/google-research/vision_transformer/blob/main/vit_jax/models_vit.py 的 ViT 实现。"""
 
 from collections.abc import Callable
 from typing import Any
@@ -29,7 +29,7 @@ Dtype = Any
 
 
 class IdentityLayer(nn.Module):
-    """Identity layer, convenient for giving a name to an array."""
+    """恒等层，便于为某个数组命名。"""
 
     @nn.compact
     def __call__(self, x):
@@ -37,10 +37,10 @@ class IdentityLayer(nn.Module):
 
 
 class AddPositionEmbs(nn.Module):
-    """Adds learned positional embeddings to the inputs.
+    """将学习到的位置嵌入加到输入上。
 
     Attributes:
-      posemb_init: positional embedding initializer.
+      posemb_init: 位置嵌入的初始化器。
     """
 
     posemb_init: Callable[[PRNGKey, Shape, Dtype], Array]
@@ -48,15 +48,15 @@ class AddPositionEmbs(nn.Module):
 
     @nn.compact
     def __call__(self, inputs):
-        """Applies the AddPositionEmbs module.
+        """应用 AddPositionEmbs 模块。
 
         Args:
-          inputs: Inputs to the layer.
+          inputs: 该层的输入。
 
         Returns:
-          Output tensor with shape `(bs, timesteps, in_dim)`.
+          形状为 `(bs, timesteps, in_dim)` 的输出张量。
         """
-        # inputs.shape is (batch_size, seq_len, emb_dim).
+        # inputs.shape 为 (batch_size, seq_len, emb_dim)。
         assert inputs.ndim == 3, f"Number of dimensions should be 3, but it is: {inputs.ndim}"
         pos_emb_shape = (1, inputs.shape[1], inputs.shape[2])
         pe = self.param("pos_embedding", self.posemb_init, pos_emb_shape, self.param_dtype)
@@ -64,7 +64,7 @@ class AddPositionEmbs(nn.Module):
 
 
 class MlpBlock(nn.Module):
-    """Transformer MLP / feed-forward block."""
+    """Transformer 的 MLP / 前馈块。"""
 
     mlp_dim: int
     dtype: Dtype = jnp.float32
@@ -76,7 +76,7 @@ class MlpBlock(nn.Module):
 
     @nn.compact
     def __call__(self, inputs, *, deterministic):
-        """Applies Transformer MlpBlock module."""
+        """应用 Transformer 的 MlpBlock 模块。"""
         actual_out_dim = inputs.shape[-1] if self.out_dim is None else self.out_dim
         x = nn.Dense(
             features=self.mlp_dim,
@@ -102,16 +102,16 @@ class MlpBlock(nn.Module):
 
 
 class Encoder1DBlock(nn.Module):
-    """Transformer encoder layer.
+    """Transformer 编码器层。
 
     Attributes:
-      inputs: input data.
-      mlp_dim: dimension of the mlp on top of attention block.
-      dtype: the dtype of the computation (default: float32).
-      dropout_rate: dropout rate.
-      attention_dropout_rate: dropout for attention heads.
-      deterministic: bool, deterministic or not (to apply dropout).
-      num_heads: Number of heads in nn.MultiHeadDotProductAttention
+      inputs: 输入数据。
+      mlp_dim: 注意力块之上 mlp 的维度。
+      dtype: 计算的 dtype（默认：float32）。
+      dropout_rate: dropout 比率。
+      attention_dropout_rate: 注意力头的 dropout。
+      deterministic: 布尔值，确定性与否（是否应用 dropout）。
+      num_heads: nn.MultiHeadDotProductAttention 中的头数
     """
 
     mlp_dim: int
@@ -122,17 +122,17 @@ class Encoder1DBlock(nn.Module):
 
     @nn.compact
     def __call__(self, inputs, deterministic):
-        """Applies Encoder1DBlock module.
+        """应用 Encoder1DBlock 模块。
 
         Args:
-          inputs: Inputs to the layer.
-          deterministic: Dropout will not be applied when set to true.
+          inputs: 该层的输入。
+          deterministic: 当设为 true 时不应用 Dropout。
 
         Returns:
-          output after transformer encoder block.
+          经过 transformer 编码器块后的输出。
         """
 
-        # Attention block.
+        # 注意力块。
         assert inputs.ndim == 3, f"Expected (batch, seq, hidden) got {inputs.shape}"
         x = nn.LayerNorm(dtype=self.dtype)(inputs)
         x = nn.MultiHeadDotProductAttention(
@@ -142,13 +142,13 @@ class Encoder1DBlock(nn.Module):
             deterministic=deterministic,
             dropout_rate=self.attention_dropout_rate,
             num_heads=self.num_heads,
-            # why isn't this true by default???
+            # 为什么这不是默认开启的？？？
             force_fp32_for_softmax=True,
         )(x, x)
         x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=deterministic)
         x = x + inputs
 
-        # MLP block.
+        # MLP 块。
         y = nn.LayerNorm(dtype=self.dtype)(x)
         y = MlpBlock(mlp_dim=self.mlp_dim, dtype=self.dtype, dropout_rate=self.dropout_rate)(
             y, deterministic=deterministic
@@ -158,14 +158,14 @@ class Encoder1DBlock(nn.Module):
 
 
 class Encoder(nn.Module):
-    """Transformer Model Encoder for sequence to sequence translation.
+    """用于序列到序列转换的 Transformer 模型编码器。
 
     Attributes:
-      num_layers: number of layers
-      mlp_dim: dimension of the mlp on top of attention block
-      num_heads: Number of heads in nn.MultiHeadDotProductAttention
-      dropout_rate: dropout rate.
-      attention_dropout_rate: dropout rate in self attention.
+      num_layers: 层数
+      mlp_dim: 注意力块之上 mlp 的维度
+      num_heads: nn.MultiHeadDotProductAttention 中的头数
+      dropout_rate: dropout 比率。
+      attention_dropout_rate: 自注意力中的 dropout 比率。
     """
 
     dtype: jax.typing.DTypeLike
@@ -178,26 +178,26 @@ class Encoder(nn.Module):
 
     @nn.compact
     def __call__(self, x, *, train):
-        """Applies Transformer model on the inputs.
+        """对输入应用 Transformer 模型。
 
         Args:
-          x: Inputs to the layer.
-          train: Set to `True` when training.
+          x: 该层的输入。
+          train: 训练时设为 `True`。
 
         Returns:
-          output of a transformer encoder.
+          transformer 编码器的输出。
         """
         assert x.ndim == 3  # (batch, len, emb)
 
         if self.add_position_embedding:
             x = AddPositionEmbs(
-                posemb_init=nn.initializers.normal(stddev=0.02),  # from BERT.
+                posemb_init=nn.initializers.normal(stddev=0.02),  # 来自 BERT。
                 name="posembed_input",
             )(x)
             x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=not train)
 
         x = x.astype(self.dtype)
-        # Input Encoder
+        # 输入编码器
         block = nn.remat(Encoder1DBlock, prevent_cse=False, static_argnums=(2,))
         x, _ = nn.scan(
             block,
@@ -217,7 +217,7 @@ class Encoder(nn.Module):
 
 
 class VisionTransformer(nn.Module):
-    """VisionTransformer."""
+    """VisionTransformer。"""
 
     dtype: jax.typing.DTypeLike
     num_classes: int
@@ -234,11 +234,11 @@ class VisionTransformer(nn.Module):
     @nn.compact
     def __call__(self, inputs, *, train):
         x = inputs
-        # (Possibly partial) ResNet root.
+        # （可能为部分的）ResNet 根块。
         if self.resnet is not None:
             width = int(64 * self.resnet.width_factor)
 
-            # Root block.
+            # 根块。
             x = models_resnet.StdConv(
                 features=width, kernel_size=(7, 7), strides=(2, 2), use_bias=False, name="conv_root"
             )(x)
@@ -246,7 +246,7 @@ class VisionTransformer(nn.Module):
             x = nn.relu(x)
             x = nn.max_pool(x, window_shape=(3, 3), strides=(2, 2), padding="SAME")
 
-            # ResNet stages.
+            # ResNet 各阶段。
             if self.resnet.num_layers:
                 x = models_resnet.ResNetStage(
                     block_size=self.resnet.num_layers[0], nout=width, first_stride=(1, 1), name="block1"
@@ -258,7 +258,7 @@ class VisionTransformer(nn.Module):
 
         n, h, w, c = x.shape
 
-        # We can merge s2d+emb into a single conv; it's the same.
+        # 我们可以将 s2d+emb 合并为单个 conv；效果相同。
         x = nn.Conv(
             features=self.hidden_size,
             kernel_size=self.patches.size,
@@ -267,14 +267,14 @@ class VisionTransformer(nn.Module):
             name="embedding",
         )(x)
 
-        # Here, x is a grid of embeddings.
+        # 此时，x 是一个嵌入网格。
 
-        # (Possibly partial) Transformer.
+        # （可能为部分的）Transformer。
         if self.transformer is not None:
             n, h, w, c = x.shape
             x = jnp.reshape(x, [n, h * w, c])
 
-            # If we want to add a class token, add it here.
+            # 若要添加一个 class token，在此处添加。
             if self.classifier in ["token", "token_unpooled"]:
                 cls = self.param("cls", nn.initializers.zeros, (1, 1, c))
                 cls = jnp.tile(cls, [n, 1, 1])

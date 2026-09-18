@@ -12,9 +12,9 @@ import openpi.models_pytorch.preprocessing_pytorch as _preprocessing
 
 
 def get_safe_dtype(target_dtype, device_type):
-    """Get a safe dtype for the given device type."""
+    """为给定的设备类型获取一个安全的 dtype。"""
     if device_type == "cpu":
-        # CPU doesn't support bfloat16, use float32 instead
+        # CPU 不支持 bfloat16，改用 float32
         if target_dtype == torch.bfloat16:
             return torch.float32
         if target_dtype == torch.float64:
@@ -25,7 +25,7 @@ def get_safe_dtype(target_dtype, device_type):
 def create_sinusoidal_pos_embedding(
     time: torch.tensor, dimension: int, min_period: float, max_period: float, device="cpu"
 ) -> Tensor:
-    """Computes sine-cosine positional embedding vectors for scalar positions."""
+    """为标量位置计算正弦-余弦（sine-cosine）位置嵌入向量。"""
     if dimension % 2 != 0:
         raise ValueError(f"dimension ({dimension}) must be divisible by 2")
 
@@ -36,7 +36,7 @@ def create_sinusoidal_pos_embedding(
     fraction = torch.linspace(0.0, 1.0, dimension // 2, dtype=dtype, device=device)
     period = min_period * (max_period / min_period) ** fraction
 
-    # Compute the outer product
+    # 计算外积
     scaling_factor = 1.0 / period * 2 * math.pi
     sin_input = scaling_factor[None, :] * time[:, None]
     return torch.cat([torch.sin(sin_input), torch.cos(sin_input)], dim=1)
@@ -50,25 +50,23 @@ def sample_beta(alpha, beta, bsize, device):
 
 
 def make_att_2d_masks(pad_masks, att_masks):
-    """Copied from big_vision.
+    """从 big_vision 复制而来。
 
-    Tokens can attend to valid inputs tokens which have a cumulative mask_ar
-    smaller or equal to theirs. This way `mask_ar` int[B, N] can be used to
-    setup several types of attention, for example:
+    token 可以关注那些累积 mask_ar 值小于或等于自身的有效输入 token。通过这种方式，`mask_ar`
+    int[B, N] 可以用来设置多种类型的注意力，例如：
 
-      [[1 1 1 1 1 1]]: pure causal attention.
+      [[1 1 1 1 1 1]]：纯因果注意力。
 
-      [[0 0 0 1 1 1]]: prefix-lm attention. The first 3 tokens can attend between
-          themselves and the last 3 tokens have a causal attention. The first
-          entry could also be a 1 without changing behaviour.
+      [[0 0 0 1 1 1]]：前缀-语言模型（prefix-lm）注意力。前 3 个 token 可以相互相关注，
+          后 3 个 token 采用因果注意力。第一个条目也可以为 1，且不会改变行为。
 
-      [[1 0 1 0 1 0 0 1 0 0]]: causal attention between 4 blocks. Tokens of a
-          block can attend all previous blocks and all tokens on the same block.
+      [[1 0 1 0 1 0 0 1 0 0]]：4 个块之间的因果注意力。一个块内的 token 可以关注
+          所有前面的块以及同一块内的所有 token。
 
     Args:
-      input_mask: bool[B, N] true if its part of the input, false if padding.
-      mask_ar: int32[B, N] mask that's 1 where previous tokens cannot depend on
-        it and 0 where it shares the same attention mask as the previous token.
+      input_mask: bool[B, N]，若属于输入则为 true，若为填充则为 false。
+      mask_ar: int32[B, N] 掩码，在前面 token 无法依赖于它的位置为 1，在与前一个 token
+        共享相同注意力掩码的位置为 0。
     """
     if att_masks.ndim != 2:
         raise ValueError(att_masks.ndim)
@@ -112,7 +110,7 @@ class PI0Pytorch(nn.Module):
         if config.pytorch_compile_mode is not None:
             self.sample_actions = torch.compile(self.sample_actions, mode=config.pytorch_compile_mode)
 
-        # Initialize gradient checkpointing flag
+        # 初始化梯度检查点标志
         self.gradient_checkpointing_enabled = False
 
         msg = "transformers_replace is not installed correctly. Please install it with `uv pip install transformers==4.53.2` and `cp -r ./src/openpi/models_pytorch/transformers_replace/* .venv/lib/python3.11/site-packages/transformers/`."
@@ -125,7 +123,7 @@ class PI0Pytorch(nn.Module):
             raise ValueError(msg) from None
 
     def gradient_checkpointing_enable(self):
-        """Enable gradient checkpointing for memory optimization."""
+        """启用梯度检查点以优化显存使用。"""
         self.gradient_checkpointing_enabled = True
         self.paligemma_with_expert.paligemma.language_model.gradient_checkpointing = True
         self.paligemma_with_expert.paligemma.vision_tower.gradient_checkpointing = True
@@ -134,7 +132,7 @@ class PI0Pytorch(nn.Module):
         logging.info("Enabled gradient checkpointing for PI0Pytorch model")
 
     def gradient_checkpointing_disable(self):
-        """Disable gradient checkpointing."""
+        """禁用梯度检查点。"""
         self.gradient_checkpointing_enabled = False
         self.paligemma_with_expert.paligemma.language_model.gradient_checkpointing = False
         self.paligemma_with_expert.paligemma.vision_tower.gradient_checkpointing = False
@@ -143,11 +141,11 @@ class PI0Pytorch(nn.Module):
         logging.info("Disabled gradient checkpointing for PI0Pytorch model")
 
     def is_gradient_checkpointing_enabled(self):
-        """Check if gradient checkpointing is enabled."""
+        """检查梯度检查点是否已启用。"""
         return self.gradient_checkpointing_enabled
 
     def _apply_checkpoint(self, func, *args, **kwargs):
-        """Helper method to apply gradient checkpointing if enabled."""
+        """辅助方法：若已启用则应用梯度检查点。"""
         if self.gradient_checkpointing_enabled and self.training:
             return torch.utils.checkpoint.checkpoint(
                 func, *args, use_reentrant=False, preserve_rng_state=False, **kwargs
@@ -155,12 +153,12 @@ class PI0Pytorch(nn.Module):
         return func(*args, **kwargs)
 
     def _prepare_attention_masks_4d(self, att_2d_masks):
-        """Helper method to prepare 4D attention masks for transformer."""
+        """辅助方法：为 transformer 准备 4D 注意力掩码。"""
         att_2d_masks_4d = att_2d_masks[:, None, :, :]
         return torch.where(att_2d_masks_4d, 0.0, -2.3819763e38)
 
     def _preprocess_observation(self, observation, *, train=True):
-        """Helper method to preprocess observation."""
+        """辅助方法：预处理观测数据。"""
         observation = _preprocessing.preprocess_observation_pytorch(observation, train=train)
         return (
             list(observation.images.values()),
@@ -187,14 +185,13 @@ class PI0Pytorch(nn.Module):
     def embed_prefix(
         self, images, img_masks, lang_tokens, lang_masks
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Embed images with SigLIP and language tokens with embedding layer to prepare
-        for PaliGemma transformer processing.
+        """使用 SigLIP 嵌入图像，并使用嵌入层嵌入语言 token，以为 PaliGemma transformer 处理做准备。
         """
         embs = []
         pad_masks = []
         att_masks = []
 
-        # Process images
+        # 处理图像
         for img, img_mask in zip(images, img_masks, strict=True):
 
             def image_embed_func(img):
@@ -207,10 +204,10 @@ class PI0Pytorch(nn.Module):
             embs.append(img_emb)
             pad_masks.append(img_mask[:, None].expand(bsize, num_img_embs))
 
-            # Create attention masks so that image tokens attend to each other
+            # 创建注意力掩码，使图像 token 之间相互关注
             att_masks += [0] * num_img_embs
 
-        # Process language tokens
+        # 处理语言 token
         def lang_embed_func(lang_tokens):
             lang_emb = self.paligemma_with_expert.embed_language_tokens(lang_tokens)
             lang_emb_dim = lang_emb.shape[-1]
@@ -221,7 +218,7 @@ class PI0Pytorch(nn.Module):
         embs.append(lang_emb)
         pad_masks.append(lang_masks)
 
-        # full attention between image and language inputs
+        # 图像与语言输入之间全连接注意力
         num_lang_embs = lang_emb.shape[1]
         att_masks += [0] * num_lang_embs
 
@@ -229,14 +226,14 @@ class PI0Pytorch(nn.Module):
         pad_masks = torch.cat(pad_masks, dim=1)
         att_masks = torch.tensor(att_masks, dtype=torch.bool, device=pad_masks.device)
 
-        # Get batch size from the first dimension of the concatenated tensors
+        # 从拼接后张量的第一维获取批次大小
         bsize = pad_masks.shape[0]
         att_masks = att_masks[None, :].expand(bsize, len(att_masks))
 
         return embs, pad_masks, att_masks
 
     def embed_suffix(self, state, noisy_actions, timestep):
-        """Embed state, noisy_actions, timestep to prepare for Expert Gemma processing."""
+        """嵌入 state、noisy_actions、timestep，以为 Expert Gemma 处理做准备。"""
         embs = []
         pad_masks = []
         att_masks = []
@@ -245,7 +242,7 @@ class PI0Pytorch(nn.Module):
             if self.state_proj.weight.dtype == torch.float32:
                 state = state.to(torch.float32)
 
-            # Embed state
+            # 嵌入状态
             def state_proj_func(state):
                 return self.state_proj(state)
 
@@ -258,16 +255,16 @@ class PI0Pytorch(nn.Module):
             state_mask = torch.ones(bsize, 1, dtype=torch.bool, device=device)
             pad_masks.append(state_mask)
 
-            # Set attention masks so that image and language inputs do not attend to state or actions
+            # 设置注意力掩码，使图像和语言输入不关注状态或动作
             att_masks += [1]
 
-        # Embed timestep using sine-cosine positional encoding with sensitivity in the range [0, 1]
+        # 使用正弦-余弦位置编码嵌入时间步，灵敏度范围为 [0, 1]
         time_emb = create_sinusoidal_pos_embedding(
             timestep, self.action_in_proj.out_features, min_period=4e-3, max_period=4.0, device=timestep.device
         )
         time_emb = time_emb.type(dtype=timestep.dtype)
 
-        # Fuse timestep + action information using an MLP
+        # 使用 MLP 融合时间步 + 动作信息
         def action_proj_func(noisy_actions):
             return self.action_in_proj(noisy_actions)
 
@@ -277,19 +274,19 @@ class PI0Pytorch(nn.Module):
             time_emb = time_emb[:, None, :].expand_as(action_emb)
             action_time_emb = torch.cat([action_emb, time_emb], dim=2)
 
-            # Apply MLP layers
+            # 应用 MLP 层
             def mlp_func(action_time_emb):
                 x = self.action_time_mlp_in(action_time_emb)
-                x = F.silu(x)  # swish == silu
+                x = F.silu(x)  # swish 即 silu
                 return self.action_time_mlp_out(x)
 
             action_time_emb = self._apply_checkpoint(mlp_func, action_time_emb)
             adarms_cond = None
         else:
-            # time MLP (for adaRMS)
+            # 时间 MLP（用于 adaRMS）
             def time_mlp_func(time_emb):
                 x = self.time_mlp_in(time_emb)
-                x = F.silu(x)  # swish == silu
+                x = F.silu(x)  # swish 即 silu
                 x = self.time_mlp_out(x)
                 return F.silu(x)
 
@@ -297,14 +294,14 @@ class PI0Pytorch(nn.Module):
             action_time_emb = action_emb
             adarms_cond = time_emb
 
-        # Add to input tokens
+        # 添加到输入 token
         embs.append(action_time_emb)
 
         bsize, action_time_dim = action_time_emb.shape[:2]
         action_time_mask = torch.ones(bsize, action_time_dim, dtype=torch.bool, device=timestep.device)
         pad_masks.append(action_time_mask)
 
-        # Set attention masks so that image, language and state inputs do not attend to action tokens
+        # 设置注意力掩码，使图像、语言和状态输入不关注动作 token
         att_masks += [1] + ([0] * (self.config.action_horizon - 1))
 
         embs = torch.cat(embs, dim=1)
@@ -315,7 +312,7 @@ class PI0Pytorch(nn.Module):
         return embs, pad_masks, att_masks, adarms_cond
 
     def forward(self, observation, actions, noise=None, time=None) -> Tensor:
-        """Do a full training forward pass and compute the loss (batch_size x num_steps x num_motors)"""
+        """执行一次完整的训练前向传播并计算损失（batch_size x num_steps x num_motors）"""
         images, img_masks, lang_tokens, lang_masks, state = self._preprocess_observation(observation, train=True)
 
         if noise is None:
@@ -343,10 +340,10 @@ class PI0Pytorch(nn.Module):
         att_2d_masks = make_att_2d_masks(pad_masks, att_masks)
         position_ids = torch.cumsum(pad_masks, dim=1) - 1
 
-        # Prepare attention masks
+        # 准备注意力掩码
         att_2d_masks_4d = self._prepare_attention_masks_4d(att_2d_masks)
 
-        # Apply gradient checkpointing if enabled
+        # 若已启用则应用梯度检查点
         def forward_func(prefix_embs, suffix_embs, att_2d_masks_4d, position_ids, adarms_cond):
             (_, suffix_out), _ = self.paligemma_with_expert.forward(
                 attention_mask=att_2d_masks_4d,
@@ -365,7 +362,7 @@ class PI0Pytorch(nn.Module):
         suffix_out = suffix_out[:, -self.config.action_horizon :]
         suffix_out = suffix_out.to(dtype=torch.float32)
 
-        # Apply gradient checkpointing to final action projection if enabled
+        # 若已启用，则对最终的动作投影应用梯度检查点
         def action_out_proj_func(suffix_out):
             return self.action_out_proj(suffix_out)
 
@@ -375,7 +372,7 @@ class PI0Pytorch(nn.Module):
 
     @torch.no_grad()
     def sample_actions(self, device, observation, noise=None, num_steps=10) -> Tensor:
-        """Do a full inference forward and compute the action (batch_size x num_steps x num_motors)"""
+        """执行一次完整的推理前向传播并计算动作（batch_size x num_steps x num_motors）"""
         bsize = observation.state.shape[0]
         if noise is None:
             actions_shape = (bsize, self.config.action_horizon, self.config.action_dim)
@@ -387,7 +384,7 @@ class PI0Pytorch(nn.Module):
         prefix_att_2d_masks = make_att_2d_masks(prefix_pad_masks, prefix_att_masks)
         prefix_position_ids = torch.cumsum(prefix_pad_masks, dim=1) - 1
 
-        # Compute image and language key value cache
+        # 计算图像和语言的 key-value 缓存
         prefix_att_2d_masks_4d = self._prepare_attention_masks_4d(prefix_att_2d_masks)
         self.paligemma_with_expert.paligemma.language_model.config._attn_implementation = "eager"  # noqa: SLF001
 
@@ -414,7 +411,7 @@ class PI0Pytorch(nn.Module):
                 expanded_time,
             )
 
-            # Euler step - use new tensor assignment instead of in-place operation
+            # 欧拉步 - 使用新的张量赋值而非就地操作
             x_t = x_t + dt * v_t
             time += dt
         return x_t
@@ -427,7 +424,7 @@ class PI0Pytorch(nn.Module):
         x_t,
         timestep,
     ):
-        """Apply one denoising step of the noise `x_t` at a given timestep."""
+        """在给定时间步对噪声 `x_t` 应用一步去噪。"""
         suffix_embs, suffix_pad_masks, suffix_att_masks, adarms_cond = self.embed_suffix(state, x_t, timestep)
 
         suffix_len = suffix_pad_masks.shape[1]
@@ -443,7 +440,7 @@ class PI0Pytorch(nn.Module):
         prefix_offsets = torch.sum(prefix_pad_masks, dim=-1)[:, None]
         position_ids = prefix_offsets + torch.cumsum(suffix_pad_masks, dim=1) - 1
 
-        # Prepare attention masks
+        # 准备注意力掩码
         full_att_2d_masks_4d = self._prepare_attention_masks_4d(full_att_2d_masks)
         self.paligemma_with_expert.gemma_expert.model.config._attn_implementation = "eager"  # noqa: SLF001
 

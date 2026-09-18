@@ -8,7 +8,7 @@ from openpi.models import model as _model
 
 
 def make_libero_example() -> dict:
-    """Creates a random input example for the Libero policy."""
+    """为 Libero 策略创建一个随机的输入示例。"""
     return {
         "observation/state": np.random.rand(8),
         "observation/image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
@@ -29,54 +29,53 @@ def _parse_image(image) -> np.ndarray:
 @dataclasses.dataclass(frozen=True)
 class LiberoInputs(transforms.DataTransformFn):
     """
-    This class is used to convert inputs to the model to the expected format. It is used for both training and inference.
+    该类用于将模型的输入转换为预期的格式。它同时用于训练和推理。
 
-    For your own dataset, you can copy this class and modify the keys based on the comments below to pipe
-    the correct elements of your dataset into the model.
+    对于你自己的数据集，你可以拷贝该类，并根据下面的注释修改键名，从而将
+    数据集中正确的元素接入模型。
     """
 
-    # Determines which model will be used.
-    # Do not change this for your own dataset.
+    # 决定将使用哪个模型。
+    # 对于你自己的数据集，不要修改这一项。
     model_type: _model.ModelType
 
     def __call__(self, data: dict) -> dict:
-        # Possibly need to parse images to uint8 (H,W,C) since LeRobot automatically
-        # stores as float32 (C,H,W), gets skipped for policy inference.
-        # Keep this for your own dataset, but if your dataset stores the images
-        # in a different key than "observation/image" or "observation/wrist_image",
-        # you should change it below.
-        # Pi0 models support three image inputs at the moment: one third-person view,
-        # and two wrist views (left and right). If your dataset does not have a particular type
-        # of image, e.g. wrist images, you can comment it out here and replace it with zeros like we do for the
-        # right wrist image below.
+        # 可能需要将图像解析为 uint8 (H,W,C)，因为 LeRobot 会自动
+        # 将其存储为 float32 (C,H,W)，在策略推理时会被跳过。
+        # 对于你自己的数据集保留这一项，但如果你的数据集将图像
+        # 存储在不同于 "observation/image" 或 "observation/wrist_image" 的键中，
+        # 你应该在下方修改它。
+        # Pi0 模型目前支持三个图像输入：一个第三视角，
+        # 以及两个腕部视角（左和右）。如果你的数据集中没有某一类
+        # 图像，例如腕部图像，你可以像下方对右腕图像所做的那样，将其注释掉并替换为零。
         base_image = _parse_image(data["observation/image"])
         wrist_image = _parse_image(data["observation/wrist_image"])
 
-        # Create inputs dict. Do not change the keys in the dict below.
+        # 创建输入字典。不要修改下方字典中的键。
         inputs = {
             "state": data["observation/state"],
             "image": {
                 "base_0_rgb": base_image,
                 "left_wrist_0_rgb": wrist_image,
-                # Pad any non-existent images with zero-arrays of the appropriate shape.
+                # 用适当形状的全零数组填充任何不存在的图像。
                 "right_wrist_0_rgb": np.zeros_like(base_image),
             },
             "image_mask": {
                 "base_0_rgb": np.True_,
                 "left_wrist_0_rgb": np.True_,
-                # We only mask padding images for pi0 model, not pi0-FAST. Do not change this for your own dataset.
+                # 我们只对 pi0 模型掩蔽填充图像，而不是 pi0-FAST。对于你自己的数据集，不要修改这一项。
                 "right_wrist_0_rgb": np.True_ if self.model_type == _model.ModelType.PI0_FAST else np.False_,
             },
         }
 
-        # Pad actions to the model action dimension. Keep this for your own dataset.
-        # Actions are only available during training.
+        # 将动作填充到模型的动作维度。对于你自己的数据集保留这一项。
+        # 动作仅在训练期间可用。
         if "actions" in data:
             inputs["actions"] = data["actions"]
 
-        # Pass the prompt (aka language instruction) to the model.
-        # Keep this for your own dataset (but modify the key if the instruction is not
-        # stored in "prompt"; the output dict always needs to have the key "prompt").
+        # 将 prompt（即语言指令）传递给模型。
+        # 对于你自己的数据集保留这一项（但如果指令并未存储在 "prompt" 中，请修改键名；
+        # 输出字典总是需要拥有键 "prompt"）。
         if "prompt" in data:
             inputs["prompt"] = data["prompt"]
 
@@ -86,15 +85,14 @@ class LiberoInputs(transforms.DataTransformFn):
 @dataclasses.dataclass(frozen=True)
 class LiberoOutputs(transforms.DataTransformFn):
     """
-    This class is used to convert outputs from the model back the the dataset specific format. It is
-    used for inference only.
+    该类用于将模型的输出转换回数据集特定的格式。它仅用于推理。
 
-    For your own dataset, you can copy this class and modify the action dimension based on the comments below.
+    对于你自己的数据集，你可以根据下面的注释修改动作维度。
     """
 
     def __call__(self, data: dict) -> dict:
-        # Only return the first N actions -- since we padded actions above to fit the model action
-        # dimension, we need to now parse out the correct number of actions in the return dict.
-        # For Libero, we only return the first 7 actions (since the rest is padding).
-        # For your own dataset, replace `7` with the action dimension of your dataset.
+        # 只返回前 N 个动作——由于上面我们对动作进行了填充以适配模型的
+        # 动作维度，现在需要在返回字典中解析出正确数量的动作。
+        # 对于 Libero，我们只返回前 7 个动作（因为其余部分是填充）。
+        # 对于你自己的数据集，将 `7` 替换为你数据集的动作维度。
         return {"actions": np.asarray(data["actions"][:, :7])}

@@ -1,8 +1,8 @@
 """
-RLDS-based data loader for DROID.
-While openpi typically uses LeRobot's data loader, it is not currently scalable enough for larger datasets like DROID.
-Thus, we provide a data loader example here that uses the RLDS data format.
-The data loader also applies a few DROID-specific data filters / transformations.
+基于 RLDS 的 DROID 数据加载器。
+openpi 通常使用 LeRobot 的数据加载器，但对于像 DROID 这样较大的数据集，它目前还不夠具伸缩性。
+因此这里提供一个使用 RLDS 数据格式的数据加载器示例。
+该数据加载器还会应用一些 DROID 专用的数据过滤 / 变换。
 """
 
 from collections.abc import Sequence
@@ -19,7 +19,7 @@ import openpi.shared.download as download
 
 
 class DroidActionSpace(Enum):
-    """Action space for DROID dataset."""
+    """DROID 数据集的动作空间。"""
 
     JOINT_POSITION = auto()
     JOINT_VELOCITY = auto()
@@ -39,26 +39,26 @@ class DroidRldsDataset:
         data_dir: str,
         batch_size: int,
         datasets: Sequence[RLDSDataset],
-        *,  # Force keyword-only arguments
+        *,  # 强制使用仅关键字参数
         shuffle: bool = True,
         action_chunk_size: int = 16,
-        # We default to joint position actions, since they allow policy evaluation in simulation.
+        # 我们默认使用关节位置动作，因为它们允许在仿真中评估策略。
         action_space: DroidActionSpace = DroidActionSpace.JOINT_POSITION,
         max_loaded_steps_per_episode: int = 100,
-        # Reduce this if you are running out of memory, but careful -- below ~100k shuffling is not sufficiently random.
+        # 如果你内存不够用，请调低此值，但要小心——低于约 100k 时打乱就不够随机了。
         shuffle_buffer_size: int = 250_000,
-        num_parallel_reads: int = -1,  # -1 == tf.data.AUTOTUNE -- hack to not import tf at top level
-        num_parallel_calls: int = -1,  # -1 == tf.data.AUTOTUNE -- hack to not import tf at top level
+        num_parallel_reads: int = -1,  # -1 == tf.data.AUTOTUNE -- 一个 hack，以便不在顶层导入 tf
+        num_parallel_calls: int = -1,  # -1 == tf.data.AUTOTUNE -- 一个 hack，以便不在顶层导入 tf
     ):
-        # Import tensorflow here to not make it mandatory in case RLDS data loader is not used.
+        # 在此处导入 tensorflow，以免在使用 RLDS 数据加载器时它不是必需的。
         import dlimp as dl
         import tensorflow as tf
         import tensorflow_datasets as tfds
 
-        # Configure Tensorflow with *no GPU devices* (to prevent clobber with PyTorch / JAX)
+        # 配置 Tensorflow 使用*无 GPU 设备*（以防与 PyTorch / JAX 冲突）
         tf.config.set_visible_devices([], "GPU")
 
-        # Ensure dataset weights sum to 1.0
+        # 确保数据集权重之和为 1.0
         assert sum(dataset.weight for dataset in datasets) == 1.0, "Dataset weights must sum to 1.0"
 
         def prepare_single_dataset(dataset_cfg: RLDSDataset):
@@ -69,23 +69,23 @@ class DroidRldsDataset:
                 builder, split="train", shuffle=shuffle, num_parallel_reads=num_parallel_reads
             )
 
-            # Filter out any unsuccessful trajectories -- we use the file name to check this
+            # 过滤掉任何不成功的轨迹——我们使用文件名来检查这一点
             dataset = dataset.filter(
                 lambda traj: tf.strings.regex_full_match(
                     traj["traj_metadata"]["episode_metadata"]["file_path"][0], ".*success.*"
                 )
             )
 
-            # Repeat dataset so we never run out of data.
+            # 重复数据集，因此我们永远不会缺数据。
             dataset = dataset.repeat()
 
-            # Load the filter dictionary if provided.
-            # The filter dictionary is a JSON file that maps episode keys to ranges of frames to sample
-            # (e.g.,
+            # 如果提供了过滤字典则加载它。
+            # 过滤字典是一个 JSON 文件，将 episode 键映射到要采样的帧范围
+            # （例如，
             # {
             #     "<episode key>": [[0, 100], [200, 300]]
             # }
-            # means keep frames 0-99 and 200-299).
+            # 表示保留第 0-99 帧和第 200-299 帧）。
 
             filter_dict_path = dataset_cfg.filter_dict_path
             if filter_dict_path is not None:
@@ -113,8 +113,8 @@ class DroidRldsDataset:
                 )
 
             def restructure(traj):
-                """Reformat observation and action keys, sample language instruction."""
-                # Important: we use joint *position* action space -- easier to simulate!
+                """重新格式化观测和动作键，并采样语言指令。"""
+                # 重要：我们使用关节*位置*动作空间——更易于仿真！
                 actions = tf.concat(
                     (
                         (
@@ -126,15 +126,15 @@ class DroidRldsDataset:
                     ),
                     axis=-1,
                 )
-                # Randomly samples one of the two exterior images in DROID during training (we only train with one at a time).
-                # Note: the "left" refers to the left camera in the stereo pair, we only train on the left camera.
+                # 训练时从 DROID 的两个外部图像中随机采样一个（我们一次只使用一个进行训练）。
+                # 注意：“left”指的是立体图像对中的左相机，我们只在左相机上训练。
                 exterior_img = tf.cond(
                     tf.random.uniform(shape=[]) > 0.5,
                     lambda: traj["observation"]["exterior_image_1_left"],
                     lambda: traj["observation"]["exterior_image_2_left"],
                 )
                 wrist_img = traj["observation"]["wrist_image_left"]
-                # Randomly sample one of the three language instructions
+                # 从三个语言指令中随机采样一个
                 instruction = tf.random.shuffle(
                     [traj["language_instruction"], traj["language_instruction_2"], traj["language_instruction_3"]]
                 )[0]
@@ -142,10 +142,10 @@ class DroidRldsDataset:
                 traj_len = tf.shape(traj["action"])[0]
                 indices = tf.as_string(tf.range(traj_len))
 
-                # Data filtering:
-                # Compute a uniquely-identifying step ID by concatenating the recording folderpath, file path,
-                # and each step's time step index. This will index into the filter hash table, and if it returns true,
-                # then the frame passes the filter.
+                # 数据过滤：
+                # 通过拼接录制文件夹路径、文件路径以及每个 step 的时间步索引，计算出一个唯一标识的 step ID。
+                # 它将用于索引过滤哈希表，如果返回 true，
+                # 则该帧通过了过滤。
                 step_id = (
                     traj["traj_metadata"]["episode_metadata"]["recording_folderpath"]
                     + "--"
@@ -171,10 +171,10 @@ class DroidRldsDataset:
             dataset = dataset.traj_map(restructure, num_parallel_calls)
 
             def chunk_actions(traj):
-                """Splits episode into action chunks."""
+                """将 episode 拆分为动作 chunk。"""
                 traj_len = tf.shape(traj["actions"])[0]
 
-                # For each step in the trajectory, construct indices for the next n actions
+                # 对轨迹中的每一步，构造接下来 n 个动作的索引
                 action_chunk_indices = tf.broadcast_to(
                     tf.range(action_chunk_size)[None],
                     [traj_len, action_chunk_size],
@@ -183,33 +183,33 @@ class DroidRldsDataset:
                     [traj_len, action_chunk_size],
                 )
 
-                # Cap to length of the sequence --> final chunks will repeat the last action
-                # This makes sense, since we are using absolute joint + gripper position actions
+                # 限制到序列长度 --> 最后的 chunk 会重复最后一个动作
+                # 这是合理的，因为我们使用的是绝对的关节 + 夹爪位置动作
                 action_chunk_indices = tf.minimum(action_chunk_indices, traj_len - 1)
 
-                # Gather the actions for each chunk
+                # 为每个 chunk 收集动作
                 traj["actions"] = tf.gather(traj["actions"], action_chunk_indices)
                 return traj
 
             dataset = dataset.traj_map(chunk_actions, num_parallel_calls)
 
-            # Flatten: map from trajectory dataset to dataset of individual action chunks
+            # 展平：从轨迹数据集映射为单个动作 chunk 的数据集
             dataset = dataset.flatten(num_parallel_calls=num_parallel_calls)
 
-            # Filter data that doesn't pass the filter
+            # 过滤掉未通过过滤的数据
             def filter_from_dict(frame):
                 return frame["passes_filter"]
 
             dataset = dataset.filter(filter_from_dict)
 
-            # Remove "passes_filter" key from output
+            # 从输出中移除 "passes_filter" 键
             def remove_passes_filter(frame):
                 frame.pop("passes_filter")
                 return frame
 
             dataset = dataset.map(remove_passes_filter)
 
-            # Decode images: RLDS saves encoded images, only decode now for efficiency
+            # 解码图像：RLDS 保存的是编码后的图像，仅为了效率而现在才解码
             def decode_images(traj):
                 traj["observation"]["image"] = tf.io.decode_image(
                     traj["observation"]["image"], expand_animations=False, dtype=tf.uint8
@@ -232,7 +232,7 @@ class DroidRldsDataset:
         final_dataset = dl.DLataset.sample_from_datasets(all_datasets, weights=weights)
         final_dataset = final_dataset.shuffle(shuffle_buffer_size)
         final_dataset = final_dataset.batch(batch_size)
-        # Note =>> Seems to reduce memory usage without affecting speed?
+        # Note =>> 似乎能在不影响速度的情况下减少内存使用？
         final_dataset = final_dataset.with_ram_budget(1)
 
         self.dataset = final_dataset
@@ -243,6 +243,6 @@ class DroidRldsDataset:
         yield from self.dataset.as_numpy_iterator()
 
     def __len__(self):
-        # This is the approximate number of samples in DROID after filtering.
-        # Easier to hardcode than to iterate through the dataset and compute it.
+        # 这是过滤后 DROID 中样本的近似数量。
+        # 硬编码比遍历数据集计算更简单。
         return 20_000_000

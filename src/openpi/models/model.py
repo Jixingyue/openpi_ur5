@@ -23,19 +23,19 @@ import openpi.shared.array_typing as at
 
 logger = logging.getLogger("openpi")
 
-# Type variable for array types (JAX arrays, PyTorch tensors, or numpy arrays)
+# 数组类型的类型变量（JAX 数组、PyTorch 张量或 numpy 数组）
 ArrayT = TypeVar("ArrayT", bound=jax.Array | torch.Tensor | np.ndarray)
 
 
 class ModelType(enum.Enum):
-    """Supported model types."""
+    """支持的模型类型。"""
 
     PI0 = "pi0"
     PI0_FAST = "pi0_fast"
     PI05 = "pi05"
 
 
-# The model always expects these images
+# 模型始终期望这些图像
 IMAGE_KEYS = (
     "base_0_rgb",
     "left_wrist_0_rgb",
@@ -43,76 +43,74 @@ IMAGE_KEYS = (
 )
 
 
-# This may need change if we release a small model.
+# 如果我们发布一个小模型，这里可能需要修改。
 IMAGE_RESOLUTION = (224, 224)
 
 
-# Data format
+# 数据格式
 #
-# Data transforms produce the model input as a nested dictionary which is later converted
-# into `Obesrvation` and `Actions` objects. See below.
+# 数据变换将模型输入生成为一个嵌套字典，随后该字典会被转换为 `Obesrvation` 和 `Actions` 对象。见下文。
 #
-# In the dictory form, this data should look like:
+# 以字典形式呈现时，该数据应如下所示：
 # {
-#     # Observation data.
+#     # 观测（Observation）数据。
 #     "image": {
-#         "base_0_rgb": (float32|uint8)[*b, h, w, 3],  # RGB image in [-1, 1] or [0, 255]
-#         ...  # Additional camera views
+#         "base_0_rgb": (float32|uint8)[*b, h, w, 3],  # RGB 图像，取值范围 [-1, 1] 或 [0, 255]
+#         ...  # 额外的相机视角
 #     },
 #     "image_mask": {
-#         "base_0_rgb": bool[*b],  # True if image is valid
-#         ...  # Masks for additional views
+#         "base_0_rgb": bool[*b],  # 若图像有效则为 True
+#         ...  # 额外视角的掩码
 #     },
-#     "state": float32[*b, s],  # Low-dimensional robot state
-#     "tokenized_prompt": int32[*b, l],  # Optional, tokenized language prompt
-#     "tokenized_prompt_mask": bool[*b, l],  # Optional, mask for tokenized prompt
-#     "token_ar_mask": int32[*b, l],  # Optional, autoregressive mask for FAST model
-#     "token_loss_mask": bool[*b, l],  # Optional, loss mask for FAST model
+#     "state": float32[*b, s],  # 低维机器人状态
+#     "tokenized_prompt": int32[*b, l],  # 可选，已分词的语言提示
+#     "tokenized_prompt_mask": bool[*b, l],  # 可选，已分词提示的掩码
+#     "token_ar_mask": int32[*b, l],  # 可选，FAST 模型的自回归掩码
+#     "token_loss_mask": bool[*b, l],  # 可选，FAST 模型的损失掩码
 #
-#      # Actions data.
+#      # 动作（Actions）数据。
 #      "actions": float32[*b ah ad]
 # }
-# where:
-#   *b = batch dimensions
-#   h,w = image height/width
-#   s = state dimension
-#   l = sequence length
+# 其中：
+#   *b = 批次维度
+#   h,w = 图像高/宽
+#   s = 状态维度
+#   l = 序列长度
 #
 @at.typecheck
 @struct.dataclass
 class Observation(Generic[ArrayT]):
-    """Holds observations, i.e., inputs to the model.
+    """保存观测数据，即模型的输入。
 
-    See `Observation.from_dict` to see the expected dictionary form. This is the format
-    that should be produced by the data transforms.
+    关于预期的字典格式，见 `Observation.from_dict`。这就是数据变换应当产生的格式。
     """
 
-    # Images, in [-1, 1] float32.
+    # 图像，取值范围为 [-1, 1] 的 float32。
     images: dict[str, at.Float[ArrayT, "*b h w c"]]
-    # Image masks, with same keys as images.
+    # 图像掩码，键与 images 相同。
     image_masks: dict[str, at.Bool[ArrayT, "*b"]]
-    # Low-dimensional robot state.
+    # 低维机器人状态。
     state: at.Float[ArrayT, "*b s"]
 
-    # Tokenized prompt.
+    # 已分词的语言提示。
     tokenized_prompt: at.Int[ArrayT, "*b l"] | None = None
-    # Tokenized prompt mask.
+    # 已分词提示的掩码。
     tokenized_prompt_mask: at.Bool[ArrayT, "*b l"] | None = None
 
-    # pi0-fast model specific fields.
+    # pi0-fast 模型专用字段。
 
-    # Token auto-regressive mask (for FAST autoregressive model).
+    # token 自回归掩码（用于 FAST 自回归模型）。
     token_ar_mask: at.Int[ArrayT, "*b l"] | None = None
-    # Token loss mask (for FAST autoregressive model).
+    # token 损失掩码（用于 FAST 自回归模型）。
     token_loss_mask: at.Bool[ArrayT, "*b l"] | None = None
 
     @classmethod
     def from_dict(cls, data: at.PyTree[ArrayT]) -> "Observation[ArrayT]":
-        """This method defines the mapping between unstructured data (i.e., nested dict) to the structured Observation format."""
-        # Ensure that tokenized_prompt and tokenized_prompt_mask are provided together.
+        """该方法定义了从非结构化数据（即嵌套字典）到结构化 Observation 格式的映射。"""
+        # 确保 tokenized_prompt 和 tokenized_prompt_mask 一同提供。
         if ("tokenized_prompt" in data) != ("tokenized_prompt_mask" in data):
             raise ValueError("tokenized_prompt and tokenized_prompt_mask must be provided together.")
-        # If images are uint8, convert them to [-1, 1] float32.
+        # 若图像为 uint8，将其转换为 [-1, 1] 的 float32。
         for key in data["image"]:
             if data["image"][key].dtype == np.uint8:
                 data["image"][key] = data["image"][key].astype(np.float32) / 255.0 * 2.0 - 1.0
@@ -129,15 +127,14 @@ class Observation(Generic[ArrayT]):
         )
 
     def to_dict(self) -> at.PyTree[ArrayT]:
-        """Convert the Observation to a nested dict."""
+        """将 Observation 转换为嵌套字典。"""
         result = dataclasses.asdict(self)
         result["image"] = result.pop("images")
         result["image_mask"] = result.pop("image_masks")
         return result
 
 
-# Defines the format of the actions. This field is included as "actions" inside the dictionary
-# produced by the data transforms.
+# 定义动作的格式。该字段作为 "actions" 包含在数据变换产生的字典内。
 Actions = at.Float[ArrayT, "*b ah ad"]
 
 
@@ -149,8 +146,7 @@ def preprocess_observation(
     image_keys: Sequence[str] = IMAGE_KEYS,
     image_resolution: tuple[int, int] = IMAGE_RESOLUTION,
 ) -> Observation:
-    """Preprocess the observations by performing image augmentations (if train=True), resizing (if necessary), and
-    filling in a default image mask (if necessary).
+    """对观测数据进行预处理：执行图像增强（若 train=True）、缩放（如有必要），以及填充默认的图像掩码（如有必要）。
     """
 
     if not set(image_keys).issubset(observation.images):
@@ -166,7 +162,7 @@ def preprocess_observation(
             image = image_tools.resize_with_pad(image, *image_resolution)
 
         if train:
-            # Convert from [-1, 1] to [0, 1] for augmax.
+            # 为 augmax 将取值从 [-1, 1] 转换到 [0, 1]。
             image = image / 2.0 + 0.5
 
             transforms = []
@@ -183,16 +179,16 @@ def preprocess_observation(
             sub_rngs = jax.random.split(rng, image.shape[0])
             image = jax.vmap(augmax.Chain(*transforms))(sub_rngs, image)
 
-            # Back to [-1, 1].
+            # 回到 [-1, 1]。
             image = image * 2.0 - 1.0
 
         out_images[key] = image
 
-    # obtain mask
+    # 获取掩码
     out_masks = {}
     for key in out_images:
         if key not in observation.image_masks:
-            # do not mask by default
+            # 默认不进行掩码
             out_masks[key] = jnp.ones(batch_shape, dtype=jnp.bool)
         else:
             out_masks[key] = jnp.asarray(observation.image_masks[key])
@@ -210,28 +206,27 @@ def preprocess_observation(
 
 @dataclasses.dataclass(frozen=True)
 class BaseModelConfig(abc.ABC):
-    """Configuration shared by all models. Specific models should inherit from this class, and implement the `create`
-    method to create the corresponding model.
+    """所有模型共享的配置。具体模型应继承该类，并实现 `create` 方法来创建相应的模型。
     """
 
-    # Action space dimension.
+    # 动作空间维度。
     action_dim: int
-    # Action sequence length.
+    # 动作序列长度。
     action_horizon: int
-    # Tokenized prompt maximum length.
+    # 已分词提示的最大长度。
     max_token_len: int
 
     @property
     @abc.abstractmethod
     def model_type(self) -> ModelType:
-        """The model type."""
+        """模型类型。"""
 
     @abc.abstractmethod
     def create(self, rng: at.KeyArrayLike) -> "BaseModel":
-        """Create a new model, initializing parameters."""
+        """创建一个新模型，并初始化参数。"""
 
     def load(self, params: at.Params, *, remove_extra_params: bool = True) -> "BaseModel":
-        """Create a model with the given parameters."""
+        """使用给定的参数创建模型。"""
         model = nnx.eval_shape(self.create, jax.random.key(0))
         graphdef, state = nnx.split(model)
         if remove_extra_params:
@@ -248,7 +243,7 @@ class BaseModelConfig(abc.ABC):
 
     @abc.abstractmethod
     def inputs_spec(self, *, batch_size: int = 1) -> tuple[Observation, Actions]:
-        """Returns the input specification for the model. Values are jax.ShapeDtypeStruct."""
+        """返回模型的输入规格。其值为 jax.ShapeDtypeStruct。"""
 
     def fake_obs(self, batch_size: int = 1) -> Observation:
         observation_spec, _ = self.inputs_spec(batch_size=batch_size)
@@ -261,8 +256,8 @@ class BaseModelConfig(abc.ABC):
 
 @dataclasses.dataclass
 class BaseModel(nnx.Module, abc.ABC):
-    """Base class for all model implementations. Specific models should inherit from this class. They should call
-    super().__init__() to initialize the shared attributes (action_dim, action_horizon, and max_token_len).
+    """所有模型实现的基类。具体模型应继承该类，并调用 super().__init__() 来初始化共享属性
+    （action_dim、action_horizon 和 max_token_len）。
     """
 
     action_dim: int
@@ -290,19 +285,19 @@ def restore_params(
     dtype: jnp.dtype | None = None,
     sharding: jax.sharding.Sharding | None = None,
 ) -> at.Params:
-    """Restores unstructured params PyTree from a checkpoint.
+    """从检查点恢复非结构化的参数 PyTree。
 
-    This works with checkpoints saved with `save_state` during openpi training (see `training/checkpoints.py`) as
-    well as pre-trained checkpoints released for openpi.
+    既可以处理 openpi 训练期间用 `save_state` 保存的检查点（见 `training/checkpoints.py`），也可以
+    处理为 openpi 发布的预训练检查点。
 
     Args:
-        params_path: The local path to the checkpoint directory.
-        restore_type: The type to restore the params as. Can be set to `np.ndarray` to load the params as a numpy array.
-        dtype: The dtype to restore all params as. If not provided, will use the original dtype from the checkpoint.
-        sharding: The sharding to use for the params. If not provided, the params will be replicated across all devices.
+        params_path: 检查点目录的本地路径。
+        restore_type: 将参数恢复为该类型。可设为 `np.ndarray` 以将参数加载为 numpy 数组。
+        dtype: 将所有参数恢复为该 dtype。若未提供，则使用检查点中的原始 dtype。
+        sharding: 参数所使用的分片（sharding）。若未提供，参数将在所有设备间复制。
 
     Returns:
-        The restored params.
+        恢复后的参数。
     """
     params_path = pathlib.Path(params_path).resolve() if not str(params_path).startswith("gs://") else params_path
 
@@ -324,8 +319,8 @@ def restore_params(
             ),
         )["params"]
 
-    # If the params were saved with `save_state` during openpi training, every key path will end with "value", which is
-    # added by `nnx.State`. We remove the "value" suffix here and always return what NNX calls a "pure dict".
+    # 若参数是在 openpi 训练期间用 `save_state` 保存的，每个键路径都会以 "value" 结尾，该后缀由
+    # `nnx.State` 添加。我们在此移除 "value" 后缀，始终返回 NNX 所谓的 "pure dict"。
     flat_params = traverse_util.flatten_dict(params)
     if all(kp[-1] == "value" for kp in flat_params):
         flat_params = {kp[:-1]: v for kp, v in flat_params.items()}

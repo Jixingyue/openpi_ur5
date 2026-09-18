@@ -13,8 +13,8 @@
 # limitations under the License.
 
 """
-Gemma model implementation from big_vision/models/ppp/gemma.py (with small modifications for NNX compatibility)
-Used for FAST autoregressive policies.
+来自 big_vision/models/ppp/gemma.py 的 Gemma 模型实现（为 NNX 兼容性做了少量修改）
+用于 FAST 自回归策略。
 """
 
 import dataclasses
@@ -33,7 +33,7 @@ Variant = Literal["gemma_2b", "gemma_2b_lora"]
 
 
 def get_config(variant):
-    """Returns config for specified gemma variant."""
+    """返回指定 gemma 变体的配置。"""
     if variant == "gemma_2b":
         return ml_collections.ConfigDict(
             {
@@ -79,7 +79,7 @@ class Einsum(nn.Module):
 
     @nn.compact
     def __call__(self, eqn, x):
-        dtype = x.dtype  # original dtype, could be half-precision
+        dtype = x.dtype  # 原始 dtype，可能是半精度
         w = self.param("w", nn.initializers.zeros_init(), self.shape).astype(dtype)
         return jnp.einsum(eqn, x, w)
 
@@ -88,19 +88,19 @@ class Einsum(nn.Module):
 class RMSNorm(nn.Module):
     @nn.compact
     def __call__(self, x):
-        dtype = x.dtype  # original dtype, could be half-precision
+        dtype = x.dtype  # 原始 dtype，可能是半精度
         scale = self.param("scale", nn.initializers.zeros_init(), (x.shape[-1]))
-        var = jnp.mean(jnp.square(x.astype(jnp.float32)), axis=-1, keepdims=True)  # compute variance in float32
-        normed_inputs = jnp.asarray(x * jnp.reciprocal(jnp.sqrt(var + 1e-06)))  # compute normalization in float32
+        var = jnp.mean(jnp.square(x.astype(jnp.float32)), axis=-1, keepdims=True)  # 在 float32 中计算方差
+        normed_inputs = jnp.asarray(x * jnp.reciprocal(jnp.sqrt(var + 1e-06)))  # 在 float32 中计算归一化
         normed_inputs = normed_inputs * (
             1 + scale
-        )  # scale by learned parameter in float32 (matches Flax implementation)
-        return normed_inputs.astype(dtype)  # return in original dtype
+        )  # 在 float32 中用学习到的参数进行缩放（与 Flax 实现一致）
+        return normed_inputs.astype(dtype)  # 以原始 dtype 返回
 
 
 @at.typecheck
 class Embedder(nn.Module):
-    """Embedder module."""
+    """嵌入（Embedder）模块。"""
 
     vocab_size: int
     embed_dim: int
@@ -123,7 +123,7 @@ class Embedder(nn.Module):
 
 @at.typecheck
 class Attention(nn.Module):
-    """Attention module."""
+    """注意力（Attention）模块。"""
 
     num_heads: int
     num_kv_heads: int
@@ -163,7 +163,7 @@ class Attention(nn.Module):
         )
 
     def _init_cache(self, k, v, cache_size):
-        """Initialize KV cache"""
+        """初始化 KV 缓存"""
         prefill_len = k.shape[1]
         pad_width = ((0, 0), (0, cache_size - prefill_len), (0, 0), (0, 0))
         cache_dtype = self.cache_dtype or k.dtype
@@ -173,7 +173,7 @@ class Attention(nn.Module):
         return idx, k_cache, v_cache
 
     def _update_cache(self, k, v, idx, k_cache, v_cache):
-        """Update KV cache with new values"""
+        """用新值更新 KV 缓存"""
         assert k.shape[1] == 1, "Only support kv-cache updates of length 1"
         indices = (0, idx[0], 0, 0)
         cache_dtype = self.cache_dtype or k.dtype
@@ -184,17 +184,17 @@ class Attention(nn.Module):
 
     @nn.compact
     def __call__(self, x, positions, attn_mask, kv_cache, decode, deterministic=True):  # noqa: FBT002
-        dtype = x.dtype  # original dtype, could be half-precision
+        dtype = x.dtype  # 原始 dtype，可能是半精度
         if self.num_kv_heads == self.num_heads:
             q, k, v = self.qkv_einsum("BSD,3KDH->3BSKH", x)
         else:
             q = self.q_einsum("BTD,NDH->BTNH", x)
             k, v = self.kv_einsum("BSD,2KDH->2BSKH", x)
 
-        q = _apply_rope(q, positions=positions)  # promotes to float32
+        q = _apply_rope(q, positions=positions)  # 提升为 float32
         q *= self.head_dim**-0.5
 
-        k = _apply_rope(k, positions=positions)  # promotes to float32
+        k = _apply_rope(k, positions=positions)  # 提升为 float32
 
         if kv_cache is None:
             idx, k_cache, v_cache = self._init_cache(k, v, attn_mask.shape[-1])
@@ -214,7 +214,7 @@ class Attention(nn.Module):
             )
 
         # big_neg = jnp.finfo(logits.dtype).min
-        big_neg = -2.3819763e38  # See gemma/modules.py
+        big_neg = -2.3819763e38  # 见 gemma/modules.py
         masked_logits = jnp.where(attn_mask[:, :, None, :, :], logits, big_neg)
 
         probs = jax.nn.softmax(masked_logits, axis=-1).astype(dtype)
@@ -226,7 +226,7 @@ class Attention(nn.Module):
 
 @at.typecheck
 class Block(nn.Module):
-    """Transformer block."""
+    """Transformer 块。"""
 
     num_heads: int
     num_kv_heads: int
@@ -277,7 +277,7 @@ KVCache: TypeAlias = tuple[at.Int[at.Array, " b"], at.Float[at.Array, "b _t _k _
 
 @at.typecheck
 class Module(nn.Module):
-    """gemma model."""
+    """gemma 模型。"""
 
     variant: str
 
@@ -292,7 +292,7 @@ class Module(nn.Module):
     embed_dtype: str
 
     dropout: float = 0.0
-    dropout_bdims: tuple[int, ...] = ()  # Every float is dropped independently.
+    dropout_bdims: tuple[int, ...] = ()  # 每个 float 都独立地被丢弃。
     cache_dtype: str | None = None
 
     scan: bool = False
@@ -313,24 +313,23 @@ class Module(nn.Module):
         deterministic=True,  # noqa: FBT002
         return_prelogits=False,  # noqa: FBT002
     ):
-        """Embed only, or complete forward pass.
+        """仅嵌入，或进行完整的前向传播。
 
         Args:
-          tokens: Embedded, then and appended to `embedded_prefix`. Can be None.
-          embedded_prefix: Optional prefix that is already embedded.
-          embed_only: Whether to compute embeddings only.
-          pre_logits: If present computes logits from pre_logits and returns.
-          positions: Optional `[B, T]` allows to specify the absolute position of
-            the tokens.
-          mask: Optional attention mask `[B, T, S]`.
-          decode: Whether to use kv-cache. Caller must pass masks and positions.
-          deterministic: Forwarded to all dropout layers.
-          return_prelogits: Whether to return the pre-logits.
+          tokens: 经过嵌入后追加到 `embedded_prefix`。可以为 None。
+          embedded_prefix: 可选的、已经完成嵌入的前缀。
+          embed_only: 是否只计算嵌入。
+          pre_logits: 若存在，则从 pre_logits 计算 logits 并返回。
+          positions: 可选的 `[B, T]`，用于指定 token 的绝对位置。
+          mask: 可选的注意力掩码 `[B, T, S]`。
+          decode: 是否使用 kv-cache。调用方必须传入掩码和位置。
+          deterministic: 传递给所有 dropout 层。
+          return_prelogits: 是否返回 pre-logits。
 
         Returns:
-          If `embed_only=False`, then `(logits, out)` will be returned.
-          If `embed_only=True`, then the embeddings will be returned.
-          If `return_prelogits=True`, then the pre-logits will be returned.
+          若 `embed_only=False`，则返回 `(logits, out)`。
+          若 `embed_only=True`，则返回嵌入。
+          若 `return_prelogits=True`，则返回 pre-logits。
         """
         out = {}
 
@@ -404,7 +403,7 @@ class Module(nn.Module):
         for block in blocks:
             x, kv_cache = block(x, kv_cache, positions, mask, decode, deterministic)
 
-        assert x.dtype == jnp.dtype(self.embed_dtype)  # Sanity check.
+        assert x.dtype == jnp.dtype(self.embed_dtype)  # 健壮性检查。
         out["encoded"] = x
 
         x = RMSNorm(name="final_norm")(x)
@@ -418,12 +417,12 @@ class Module(nn.Module):
         return x, kv_cache, out
 
     def init(self):
-        """Convenience method for initializing all parameters, necessary due to the quirks of linen."""
+        """初始化所有参数的便捷方法，由于 linen 的若干怪癖而有必要存在。"""
         self(jnp.zeros((1, 1), dtype=jnp.int32))
 
 
 def _apply_rope(x, *, positions, max_wavelength=10_000):
-    """Applies RoPE positions [B, L] to x [B, L, H, D]."""
+    """将 RoPE 位置 [B, L] 应用于 x [B, L, H, D]。"""
     freq_exponents = (2.0 / x.shape[-1]) * jnp.arange(x.shape[-1] // 2, dtype=jnp.float32)
     timescale = max_wavelength**freq_exponents
     radians = positions[..., None] / timescale[None, None, :]

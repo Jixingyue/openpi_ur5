@@ -157,7 +157,7 @@ class GemmaConfig(PretrainedConfig):
         self.use_adarms = use_adarms
         self.adarms_cond_dim = adarms_cond_dim
 
-        # Set default for adarms_cond_dim if use_adarms is True
+        # 如果 use_adarms 为 True，则为 adarms_cond_dim 设置默认值
         if self.use_adarms and self.adarms_cond_dim is None:
             self.adarms_cond_dim = self.hidden_size
 

@@ -10,19 +10,19 @@ import openpi.shared.array_typing as at
 
 @struct.dataclass
 class LoRAConfig:
-    """Configuration for LoRA."""
+    """LoRA 的配置。"""
 
-    # LoRA rank.
+    # LoRA 秩（rank）。
     rank: int
-    # LoRA scaling factor.
+    # LoRA 缩放因子。
     alpha: float = 1.0
-    # Initialization function for LoRA parameters.
+    # LoRA 参数的初始化函数。
     init_fn: nn.initializers.Initializer = nn.initializers.normal(stddev=0.01)
-    # Enable rank-stabilized LoRA: https://arxiv.org/pdf/2312.03732
+    # 启用秩稳定 LoRA（rank-stabilized LoRA）：https://arxiv.org/pdf/2312.03732
     rslora: bool = False
-    # Axes in the weight to apply LoRA to. Should typically be the last two axes.
+    # 权重中应用 LoRA 的轴。通常应为最后两个轴。
     axes: tuple[int, int] = (-2, -1)
-    # Axis label which is used by LoRA in einsum equations. Must not be present in the original equation.
+    # LoRA 在 einsum 方程中使用的轴标签。必须不出现在原始方程中。
     label: str = "L"
 
     @property
@@ -31,20 +31,20 @@ class LoRAConfig:
 
 
 class Einsum(nn.Module):
-    """Einsum with LoRA support. Can be used as a drop-in replacement for the Gemma Einsum."""
+    """带 LoRA 支持的 Einsum。可作为 Gemma Einsum 的即插即用替代品。"""
 
-    # Shape of the weight.
+    # 权重的形状。
     shape: tuple[int, ...]
-    # Initialization function for the weight.
+    # 权重的初始化函数。
     init_fn: nn.initializers.Initializer = nn.initializers.zeros
-    # If not None, apply LoRA to the weight.
+    # 若不为 None，则对权重应用 LoRA。
     lora_config: LoRAConfig | None = None
 
     def setup(self):
         self.w = self.param("w", self.init_fn, self.shape)
 
         if config := self.lora_config:
-            # Setup LoRA parameters.
+            # 设置 LoRA 参数。
             shape_a, shape_b = list(self.shape), list(self.shape)
             shape_a[config.axes[1]] = config.rank
             shape_b[config.axes[0]] = config.rank
@@ -53,7 +53,7 @@ class Einsum(nn.Module):
 
     @nn.compact
     def __call__(self, eqn: str, x):
-        dtype = x.dtype  # original dtype, could be half-precision
+        dtype = x.dtype  # 原始 dtype，可能是半精度
         result = jnp.einsum(eqn, x, self.w.astype(dtype))
 
         if config := self.lora_config:
@@ -86,11 +86,11 @@ class Einsum(nn.Module):
 
 
 class FeedForward(nn.Module):
-    """Feed forward module."""
+    """前馈（Feed forward）模块。"""
 
     features: int
     hidden_dim: int
-    # If not None, apply LoRA to the weight.
+    # 若不为 None，则对权重应用 LoRA。
     lora_config: LoRAConfig | None = None
 
     def setup(self):
@@ -107,8 +107,8 @@ class FeedForward(nn.Module):
         self.w_gating_lora = None
         self.w_linear_lora = None
         if self.lora_config:
-            # Setup LoRA parameters.
-            # TODO: follow up with a simplified init_fn api.
+            # 设置 LoRA 参数。
+            # TODO：后续跟进一个简化的 init_fn api。
             self.w_gating_lora = (
                 self.param("gating_einsum_lora_a", self.lora_config.init_fn, (2, self.features, self.lora_config.rank)),
                 self.param(
@@ -122,7 +122,7 @@ class FeedForward(nn.Module):
 
     @nn.compact
     def __call__(self, x):
-        dtype = x.dtype  # original dtype, could be half-precision
+        dtype = x.dtype  # 原始 dtype，可能是半精度
         ff_gate = self._dot(
             x,
             self.w_gating[0],

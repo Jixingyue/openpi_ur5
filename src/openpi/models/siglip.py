@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A refactored and simplified ViT adoptation for Pi, taken from big_vision."""
+"""来自 big_vision 的、为 Pi 重构并简化后的 ViT 适配版本。"""
 
 from collections.abc import Sequence
 
@@ -25,7 +25,7 @@ import openpi.training.sharding as sharding
 
 
 def posemb_sincos_2d(h, w, width, temperature=10_000.0, dtype=jnp.float32):
-    """Follows the MoCo v3 logic."""
+    """遵循 MoCo v3 的逻辑。"""
     y, x = jnp.mgrid[:h, :w]
 
     assert width % 4 == 0, "Width must be mult of 4 for sincos posemb"
@@ -51,15 +51,15 @@ def get_posemb(self, typ, seqshape, width, name, dtype=jnp.float32):
 
 
 class MlpBlock(nn.Module):
-    """Transformer MLP / feed-forward block."""
+    """Transformer 的 MLP / 前馈块。"""
 
-    mlp_dim: int | None = None  # Defaults to 4x input dim
+    mlp_dim: int | None = None  # 默认为输入维度的 4 倍
     dropout: float = 0.0
     dtype_mm: str = "float32"
 
     @nn.compact
     def __call__(self, x, deterministic=True):  # noqa: FBT002
-        """Applies Transformer MlpBlock module."""
+        """应用 Transformer 的 MlpBlock 模块。"""
         inits = {
             "kernel_init": nn.initializers.xavier_uniform(),
             "bias_init": nn.initializers.normal(stddev=1e-6),
@@ -73,9 +73,9 @@ class MlpBlock(nn.Module):
 
 
 class Encoder1DBlock(nn.Module):
-    """Single transformer encoder block (MHSA + MLP)."""
+    """单个 transformer 编码器块（MHSA + MLP）。"""
 
-    mlp_dim: int | None = None  # Defaults to 4x input dim
+    mlp_dim: int | None = None  # 默认为输入维度的 4 倍
     num_heads: int = 12
     dropout: float = 0.0
     dtype_mm: str = "float32"
@@ -109,10 +109,10 @@ class Encoder1DBlock(nn.Module):
 
 
 class Encoder(nn.Module):
-    """Transformer Model Encoder for sequence to sequence translation."""
+    """用于序列到序列转换的 Transformer 模型编码器。"""
 
     depth: int
-    mlp_dim: int | None = None  # Defaults to 4x input dim
+    mlp_dim: int | None = None  # 默认为输入维度的 4 倍
     num_heads: int = 12
     dropout: float = 0.0
     scan: bool = False
@@ -146,7 +146,7 @@ class Encoder(nn.Module):
             for lyr in range(self.depth):
                 out[f"block{lyr:02d}"] = jax.tree.map(lambda o, lyr=lyr: o[lyr], scan_out)
         else:
-            # Input Encoder
+            # 输入编码器
             for lyr in range(self.depth):
                 block_cur = Encoder1DBlock(
                     name=f"encoderblock_{lyr}",
@@ -156,15 +156,15 @@ class Encoder(nn.Module):
                     dropout=self.dropout,
                 )
                 x, out[f"block{lyr:02d}"] = block_cur(x, deterministic)
-            out["pre_ln"] = x  # Alias for last block, but without the number in it.
+            out["pre_ln"] = x  # 作为最后一个块的别名，但不带其中的编号。
 
         return nn.LayerNorm(name="encoder_norm", dtype=self.dtype_mm)(x), out
 
 
 class MAPHead(nn.Module):
-    """Multihead Attention Pooling."""
+    """多头注意力池化（Multihead Attention Pooling）。"""
 
-    mlp_dim: int | None = None  # Defaults to 4x input dim
+    mlp_dim: int | None = None  # 默认为输入维度的 4 倍
     num_heads: int = 12
     dtype_mm: str = "float32"
 
@@ -186,21 +186,21 @@ class MAPHead(nn.Module):
 
 
 class _Module(nn.Module):
-    """ViT model."""
+    """ViT 模型。"""
 
     num_classes: int | None = None
     patch_size: Sequence[int] = (16, 16)
     width: int = 768
     depth: int = 12
-    mlp_dim: int | None = None  # Defaults to 4x input dim
+    mlp_dim: int | None = None  # 默认为输入维度的 4 倍
     num_heads: int = 12
-    posemb: str = "learn"  # Can also be "sincos2d"
+    posemb: str = "learn"  # 也可以为 "sincos2d"
     rep_size: int | bool = False
     dropout: float = 0.0
-    pool_type: str = "gap"  # Can also be "map" or "tok"
+    pool_type: str = "gap"  # 也可以为 "map" 或 "tok"
     head_zeroinit: bool = True
     scan: bool = False
-    # or "dots_with_no_batch_dims_saveable" for more speed (memory costly)
+    # 或使用 "dots_with_no_batch_dims_saveable" 以获得更快速度（更耗内存）
     remat_policy: str = "nothing_saveable"
     dtype_mm: str = "float32"
 
@@ -208,11 +208,11 @@ class _Module(nn.Module):
     def __call__(self, image, *, train=False):
         out = {}
 
-        # Kevin edit: do patch extraction and posemb in float32,
-        # because I feel like it's a bit safer.
+        # Kevin 的修改：以 float32 进行 patch 提取和 posemb，
+        # 因为我觉得这样更安全一些。
         image = jnp.asarray(image, jnp.float32)
 
-        # Patch extraction
+        # Patch（图像块）提取
         x = out["stem"] = nn.Conv(
             self.width,
             self.patch_size,
@@ -225,7 +225,7 @@ class _Module(nn.Module):
         n, h, w, c = x.shape
         x = jnp.reshape(x, [n, h * w, c])
 
-        # Add posemb before adding extra token.
+        # 在添加额外 token 之前先加上 posemb。
         x = out["with_posemb"] = x + get_posemb(self, self.posemb, (h, w), c, "pos_embedding", jnp.float32)
 
         if self.pool_type == "tok":
@@ -235,7 +235,7 @@ class _Module(nn.Module):
         n, _, c = x.shape  # n,l,d
         x = nn.Dropout(rate=self.dropout)(x, not train)
 
-        # Kevin edit: now cast back to dtype_mm (potentially half precision)
+        # Kevin 的修改：现在转回 dtype_mm（可能是半精度）
         x = x.astype(self.dtype_mm)
 
         x, out["encoder"] = Encoder(
@@ -273,8 +273,8 @@ class _Module(nn.Module):
         if self.rep_size:
             rep_size = self.width if self.rep_size is True else self.rep_size
             hid = nn.Dense(rep_size, dtype=self.dtype_mm, name="pre_logits")
-            # NOTE: In the past we did not include tanh in pre_logits.
-            # For few-shot, it should not matter much, as it whitens anyways.
+            # 注：过去我们在 pre_logits 中不包含 tanh。
+            # 对于 few-shot 而言，它应该影响不大，因为无论如何都会做白化（whitening）。
             x_2d = nn.tanh(hid(x_2d))
             x = nn.tanh(hid(x))
 
@@ -291,12 +291,12 @@ class _Module(nn.Module):
 
 
 def Module(num_classes=None, *, variant=None, **kw):  # pylint: disable=invalid-name  # noqa: N802
-    """Factory function, because linen really don't like what I'm doing!"""
+    """工厂函数，因为 linen 真的不喜欢我这样做！"""
     return _Module(num_classes, **{**decode_variant(variant), **kw})
 
 
 def decode_variant(variant):
-    """Converts a string like "B" or "B/32" into a params dict."""
+    """将类似 "B" 或 "B/32" 的字符串转换为参数字典。"""
     if variant is None:
         return {}
 
@@ -307,7 +307,7 @@ def decode_variant(variant):
 
     return {
         # pylint:disable=line-too-long
-        # Reference: Table 2 of https://arxiv.org/abs/2106.04560.
+        # 参考：https://arxiv.org/abs/2106.04560 的表 2。
         "width": {
             "mu": 32,
             "Ti": 192,

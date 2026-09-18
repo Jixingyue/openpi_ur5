@@ -34,18 +34,18 @@ class Policy(BasePolicy):
         pytorch_device: str = "cpu",
         is_pytorch: bool = False,
     ):
-        """Initialize the Policy.
+        """初始化 Policy。
 
         Args:
-            model: The model to use for action sampling.
-            rng: Random number generator key for JAX models. Ignored for PyTorch models.
-            transforms: Input data transformations to apply before inference.
-            output_transforms: Output data transformations to apply after inference.
-            sample_kwargs: Additional keyword arguments to pass to model.sample_actions.
-            metadata: Additional metadata to store with the policy.
-            pytorch_device: Device to use for PyTorch models (e.g., "cpu", "cuda:0").
-                          Only relevant when is_pytorch=True.
-            is_pytorch: Whether the model is a PyTorch model. If False, assumes JAX model.
+            model: 用于动作采样的模型。
+            rng: JAX 模型使用的随机数生成器 key。对 PyTorch 模型忽略。
+            transforms: 在推理之前应用的输入数据变换。
+            output_transforms: 在推理之后应用的输出数据变换。
+            sample_kwargs: 传给 model.sample_actions 的额外关键字参数。
+            metadata: 与策略一起存储的额外元数据。
+            pytorch_device: PyTorch 模型使用的设备（例如 "cpu"、"cuda:0"）。
+                          仅当 is_pytorch=True 时相关。
+            is_pytorch: 模型是否为 PyTorch 模型。若为 False，则假定是 JAX 模型。
         """
         self._model = model
         self._input_transform = _transforms.compose(transforms)
@@ -60,31 +60,31 @@ class Policy(BasePolicy):
             self._model.eval()
             self._sample_actions = model.sample_actions
         else:
-            # JAX model setup
+            # JAX 模型的初始化
             self._sample_actions = nnx_utils.module_jit(model.sample_actions)
             self._rng = rng or jax.random.key(0)
 
     @override
     def infer(self, obs: dict, *, noise: np.ndarray | None = None) -> dict:  # type: ignore[misc]
-        # Make a copy since transformations may modify the inputs in place.
+        # 制作一份副本，因为变换可能会就地修改输入。
         inputs = jax.tree.map(lambda x: x, obs)
         inputs = self._input_transform(inputs)
         if not self._is_pytorch_model:
-            # Make a batch and convert to jax.Array.
+            # 制作一个批次并转换为 jax.Array。
             inputs = jax.tree.map(lambda x: jnp.asarray(x)[np.newaxis, ...], inputs)
             self._rng, sample_rng_or_pytorch_device = jax.random.split(self._rng)
         else:
-            # Convert inputs to PyTorch tensors and move to correct device
+            # 将输入转换为 PyTorch 张量并移到正确的设备
             inputs = jax.tree.map(lambda x: torch.from_numpy(np.array(x)).to(self._pytorch_device)[None, ...], inputs)
             sample_rng_or_pytorch_device = self._pytorch_device
 
-        # Prepare kwargs for sample_actions
+        # 为 sample_actions 准备 kwargs
         sample_kwargs = dict(self._sample_kwargs)
         if noise is not None:
             noise = torch.from_numpy(noise).to(self._pytorch_device) if self._is_pytorch_model else jnp.asarray(noise)
 
-            if noise.ndim == 2:  # If noise is (action_horizon, action_dim), add batch dimension
-                noise = noise[None, ...]  # Make it (1, action_horizon, action_dim)
+            if noise.ndim == 2:  # 如果 noise 为 (action_horizon, action_dim)，则添加批次维度
+                noise = noise[None, ...]  # 使其变为 (1, action_horizon, action_dim)
             sample_kwargs["noise"] = noise
 
         observation = _model.Observation.from_dict(inputs)
@@ -111,7 +111,7 @@ class Policy(BasePolicy):
 
 
 class PolicyRecorder(_base_policy.BasePolicy):
-    """Records the policy's behavior to disk."""
+    """将策略的行为记录到磁盘。"""
 
     def __init__(self, policy: _base_policy.BasePolicy, record_dir: str):
         self._policy = policy

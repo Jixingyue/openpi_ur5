@@ -115,8 +115,8 @@ class PaliGemmaPreTrainedModel(PreTrainedModel):
     _supports_attention_backend = True
 
     def _init_weights(self, module):
-        # important: this ported version of PaliGemmaisn't meant for training from scratch - only
-        # inference and fine-tuning
+        # 重要：这个移植版本的 PaliGemma 并非用于从头训练——仅用于
+        # 推理和微调
         std = getattr(self.config, "initializer_range", self.config.get_text_config().initializer_range)
 
         if isinstance(module, nn.Linear):
@@ -132,7 +132,7 @@ class PaliGemmaPreTrainedModel(PreTrainedModel):
 )
 class PaliGemmaModel(PaliGemmaPreTrainedModel):
     _checkpoint_conversion_mapping = {"language_model.model": "language_model"}
-    # we are filtering the logits/labels so we shouldn't divide the loss based on num_items_in_batch
+    # 我们正在对 logits/labels 进行过滤，因此不应根据 num_items_in_batch 除以 loss
     accepts_loss_kwargs = False
 
     def __init__(self, config: PaliGemmaConfig):
@@ -193,13 +193,13 @@ class PaliGemmaModel(PaliGemmaPreTrainedModel):
             )
 
         if attention_mask is not None and attention_mask.dim() == 4:
-            # In this case we assume that the mask comes already in inverted form and requires no inversion or slicing.
+            # 在这种情况下，我们假设掩码已经以取反的形式传入，无需再取反或切片。
             return attention_mask
 
         causal_mask = torch.full(
             (sequence_length, target_length), fill_value=min_dtype, dtype=self.dtype, device=cache_position.device
         )
-        # Causal diagonal mask only if training, otherwise attend to the whole prefix. Training-specific attn for prefix is handled below
+        # 仅在训练时使用因果对角掩码，否则关注整个 prefix。prefix 训练专用的注意力在下方处理
         if sequence_length != 1:
             if is_training:
                 causal_mask = torch.triu(causal_mask, diagonal=1)
@@ -212,7 +212,7 @@ class PaliGemmaModel(PaliGemmaPreTrainedModel):
             causal_mask = causal_mask.clone()  # copy to contiguous memory for in-place edit
             mask_length = attention_mask.shape[-1]
 
-            # First unmask prefix tokens during training
+            # 训练时先取消屏蔽 prefix token
             if is_training:
                 if token_type_ids is None:
                     raise ValueError("Token type ids must be provided during training")
@@ -220,7 +220,7 @@ class PaliGemmaModel(PaliGemmaPreTrainedModel):
                     token_type_ids[:, None, None, :].to(causal_mask.device) == 0, 0
                 )
 
-            # Then apply padding mask (will mask pad tokens)
+            # 然后应用填充掩码（将屏蔽 pad token）
             padding_mask = causal_mask[:, :, :, :mask_length] + attention_mask[:, None, None, :].to(causal_mask.device)
             padding_mask = padding_mask == 0
             causal_mask[:, :, :, :mask_length] = causal_mask[:, :, :, :mask_length].masked_fill(
@@ -302,7 +302,7 @@ class PaliGemmaModel(PaliGemmaPreTrainedModel):
 
         is_training = token_type_ids is not None and labels is not None
 
-        # Replace image id woth PAD if the image token if OOV, to avoid index-errors
+        # 如果 image token 超出词表（OOV），则将 image id 替换为 PAD，以避免索引错误
         if input_ids is not None and self.config.image_token_id >= self.vocab_size:
             special_image_mask = input_ids == self.config.image_token_id
             llm_input_ids = input_ids.clone()
@@ -322,7 +322,7 @@ class PaliGemmaModel(PaliGemmaPreTrainedModel):
         if position_ids is None:
             position_ids = cache_position.unsqueeze(0) + 1  # Paligemma positions are 1-indexed
 
-        # Merge text and images
+        # 合并文本和图像
         if pixel_values is not None:
             image_features = self.get_image_features(pixel_values)
 
@@ -413,7 +413,7 @@ class PaliGemmaForConditionalGeneration(PaliGemmaPreTrainedModel, GenerationMixi
     def get_image_features(self, pixel_values):
         return self.model.get_image_features(pixel_values)
 
-    # Make modules available throught conditional class for BC
+    # 通过条件类使各模块可用，以保持向后兼容（BC）
     @property
     def language_model(self):
         return self.model.language_model
@@ -497,7 +497,7 @@ class PaliGemmaForConditionalGeneration(PaliGemmaPreTrainedModel, GenerationMixi
         )
 
         hidden_states = outputs[0]
-        # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
+        # 只计算必要的 logits；如果不计算 loss，就不要将它们上转回 float
         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
         logits = self.lm_head(hidden_states[:, slice_indices, :])
 
@@ -531,7 +531,7 @@ class PaliGemmaForConditionalGeneration(PaliGemmaPreTrainedModel, GenerationMixi
         labels=None,
         **kwargs,
     ):
-        # Overwritten -- custom `position_ids` and `pixel_values` handling
+        # 被覆写——自定义的 `position_ids` 和 `pixel_values` 处理
         model_inputs = super().prepare_inputs_for_generation(
             input_ids,
             past_key_values=past_key_values,
@@ -545,11 +545,11 @@ class PaliGemmaForConditionalGeneration(PaliGemmaPreTrainedModel, GenerationMixi
             **kwargs,
         )
 
-        # position_ids in Paligemma are 1-indexed
+        # PaliGemma 中的 position_ids 从 1 开始计数
         if model_inputs.get("position_ids") is not None:
             model_inputs["position_ids"] += 1
-        # If we're in cached decoding stage, pixel values should be None because input ids do not contain special image token anymore
-        # Otherwise we need pixel values to be passed to model. NOTE: use_cache=False needs pixel_values always
+        # 如果处于带 cache 的解码阶段，pixel values 应为 None，因为 input ids 不再包含特殊的 image token
+        # 否则需要向模型传入 pixel values。注意：use_cache=False 时总是需要 pixel_values
         if cache_position[0] == 0:
             model_inputs["pixel_values"] = pixel_values
         is_training = token_type_ids is not None and labels is not None
@@ -594,7 +594,7 @@ class PaliGemmaForConditionalGeneration(PaliGemmaPreTrainedModel, GenerationMixi
                 Batch size.
         """
         if attention_mask is not None and attention_mask.dim() == 4:
-            # In this case we assume that the mask comes already in inverted form and requires no inversion or slicing.
+            # 在这种情况下，我们假设掩码已经以取反的形式传入，无需再取反或切片。
             causal_mask = attention_mask
         else:
             min_dtype = torch.finfo(dtype).min

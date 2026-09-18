@@ -1,4 +1,4 @@
-"""UR5 (LeRobot) policy transforms: map dataset / runtime dicts to the model format."""
+"""UR5（LeRobot）策略变换：将数据集 / 运行时的字典映射为模型格式。"""
 
 import dataclasses
 import io
@@ -13,7 +13,7 @@ from openpi.models import model as _model
 
 
 def _parse_image(image: Any) -> np.ndarray:
-    """LeRobot v2 may store images as ``uint8`` arrays, float CHW tensors, or ``{bytes, path}`` dicts."""
+    """LeRobot v2 可能将图像存储为 ``uint8`` 数组、float CHW 张量，或 ``{bytes, path}`` 字典。"""
     if isinstance(image, dict) and image.get("bytes"):
         pil = Image.open(io.BytesIO(image["bytes"]))
         return np.asarray(pil.convert("RGB"), dtype=np.uint8)
@@ -28,7 +28,7 @@ def _parse_image(image: Any) -> np.ndarray:
 
 
 def make_ur5_example() -> dict:
-    """Random example matching keys after `LeRobotUR5DataConfig` repack (for tests / debugging)."""
+    """与 `LeRobotUR5DataConfig` repack 之后的键相匹配的随机示例（用于测试 / 调试）。"""
     return {
         "joints": np.random.rand(6).astype(np.float32),
         "gripper": np.random.rand(1).astype(np.float32),
@@ -40,7 +40,7 @@ def make_ur5_example() -> dict:
 
 @dataclasses.dataclass(frozen=True)
 class UR5Inputs(transforms.DataTransformFn):
-    """Maps repacked UR5 fields to the model observation layout (see `examples/ur5/README.md`)."""
+    """将重新打包的 UR5 字段映射为模型观测布局（参见 `examples/ur5/README.md`）。"""
 
     model_type: _model.ModelType = _model.ModelType.PI0
 
@@ -77,7 +77,7 @@ class UR5Inputs(transforms.DataTransformFn):
 
 @dataclasses.dataclass(frozen=True)
 class UR5Outputs(transforms.DataTransformFn):
-    """Maps model outputs back to 7-DoF UR5 commands (6 joints + gripper)."""
+    """将模型输出映射回 7 自由度（7-DoF）的 UR5 指令（6 个关节 + 夹爪）。"""
 
     def __call__(self, data: dict) -> dict:
         return {"actions": np.asarray(data["actions"][:, :7])}
@@ -85,9 +85,9 @@ class UR5Outputs(transforms.DataTransformFn):
 
 @dataclasses.dataclass(frozen=True)
 class UR5SingleCameraInputs(transforms.DataTransformFn):
-    """Single third-person camera + 7D proprio (e.g. LeRobot ``state``), no wrist image.
+    """单个第三视角相机 + 7D 本体感受（例如 LeRobot 的 ``state``），无腕部图像。
 
-    Wrist slots are zero-filled; only ``base_0_rgb`` is marked valid (plus FAST right-slot rule).
+    腕部槽位会被填零；只有 ``base_0_rgb`` 被标记为有效（外加 FAST 的右侧槽位规则）。
     """
 
     model_type: _model.ModelType = _model.ModelType.PI0
@@ -122,7 +122,7 @@ class UR5SingleCameraInputs(transforms.DataTransformFn):
 
 
 def make_ur5_single_cam_example() -> dict:
-    """Keys after repack for `LeRobotUR5SingleCamDataConfig` (matches local LeRobot v2.1 parquet layout)."""
+    """`LeRobotUR5SingleCamDataConfig` repack 之后的键（与本地 LeRobot v2.1 的 parquet 布局相匹配）。"""
     return {
         "state": np.random.randn(7).astype(np.float32),
         "base_rgb": np.random.randint(256, size=(64, 64, 3), dtype=np.uint8),

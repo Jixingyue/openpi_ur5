@@ -53,46 +53,46 @@ class GemmaRMSNorm(nn.Module):
         self.dim = dim
         self.cond_dim = cond_dim
         
-        # Dense layer for adaptive normalization (if cond_dim is provided)
+        # 用于自适应归一化的 Dense 层（如果提供了 cond_dim）
         if cond_dim is not None:
             #self.dense = nn.Linear(cond_dim, dim * 3, bias=True, dtype=torch.bfloat16)
             self.dense = nn.Linear(cond_dim, dim * 3, bias=True)
-            # Initialize with zeros (matches source implementation)
+            # 初始化为零（与源实现一致）
             nn.init.zeros_(self.dense.weight)
         else:
             self.weight = nn.Parameter(torch.zeros(dim, dtype=torch.bfloat16))
             self.dense = None
 
     def _norm(self, x):
-        # Compute variance in float32 (like the source implementation)
+        # 以 float32 计算方差（与源实现一致）
         var = torch.mean(torch.square(x.float()), dim=-1, keepdim=True)
-        # Compute normalization in float32
+        # 以 float32 计算归一化
         normed_inputs = x * torch.rsqrt(var + self.eps)
         return normed_inputs
 
     def forward(self, x, cond=None):
-        dtype = x.dtype  # original dtype, could be half-precision
+        dtype = x.dtype  # 原始 dtype，可能是半精度
         normed_inputs = self._norm(x)
         
         if cond is None or self.dense is None:
-            # regular RMSNorm
-            # scale by learned parameter in float32 (matches source implementation)
+            # 常规 RMSNorm
+            # 以 float32 乘以可学习参数进行缩放（与源实现一致）
             normed_inputs = normed_inputs * (1.0 + self.weight.float())
-            return normed_inputs.to(dtype), None  # return in original dtype with None gate
+            return normed_inputs.to(dtype), None  # 以原始 dtype 返回，gate 为 None
         
-        # adaptive RMSNorm (if cond is provided and dense layer exists)
+        # 自适应 RMSNorm（如果提供了 cond 且存在 dense 层）
         if cond.shape[-1] != self.cond_dim:
             raise ValueError(f"Expected cond dimension {self.cond_dim}, got {cond.shape[-1]}")
         
         #self.dense.to(dtype=torch.bfloat16).to(dtype=torch.float32)
         modulation = self.dense(cond)
-        # Reshape modulation to broadcast properly: [batch, 1, features] for [batch, seq, features]
+        # 重塑 modulation 的形状以便正确广播：为 [batch, seq, features] 提供 [batch, 1, features]
         if len(x.shape) == 3:  # [batch, seq, features]
             modulation = modulation.unsqueeze(1)
         
         scale, shift, gate = torch.chunk(modulation, 3, dim=-1)
         
-        # Apply adaptive normalization: use model weight dtype to ensure compatibility
+        # 应用自适应归一化：使用模型权重的 dtype 以确保兼容性
         # model_dtype = self.dense.weight.dtype  # Use the model's dtype (bfloat16)
         # scale = scale.to(model_dtype)
         # shift = shift.to(model_dtype)
@@ -129,7 +129,7 @@ class GemmaMLP(nn.Module):
 class GemmaRotaryEmbedding(nn.Module):
     def __init__(self, config: GemmaConfig, device=None):
         super().__init__()
-        # BC: "rope_type" was originally "type"
+        # BC（向后兼容）："rope_type" 原本名为 "type"
         if hasattr(config, "rope_scaling") and config.rope_scaling is not None:
             self.rope_type = config.rope_scaling.get("rope_type", config.rope_scaling.get("type"))
         else:
@@ -161,14 +161,14 @@ class GemmaRotaryEmbedding(nn.Module):
 
 
 def rotate_half(x):
-    """Rotates half the hidden dims of the input."""
+    """对输入隐藏维度的一半进行旋转。"""
     x1 = x[..., : x.shape[-1] // 2]
     x2 = x[..., x.shape[-1] // 2 :]
     return torch.cat((-x2, x1), dim=-1)
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
-    """Applies Rotary Position Embedding to the query and key tensors.
+    """将旋转位置编码（RoPE）应用于 query 和 key 张量。
 
     Args:
         q (`torch.Tensor`): The query tensor.
@@ -196,8 +196,8 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
 
 def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     """
-    This is the equivalent of torch.repeat_interleave(x, dim=1, repeats=n_rep). The hidden states go from (batch,
-    num_key_value_heads, seqlen, head_dim) to (batch, num_attention_heads, seqlen, head_dim)
+    这等价于 torch.repeat_interleave(x, dim=1, repeats=n_rep)。隐藏状态从 (batch,
+    num_key_value_heads, seqlen, head_dim) 变为 (batch, num_attention_heads, seqlen, head_dim)
     """
     batch, num_key_value_heads, slen, head_dim = hidden_states.shape
     if n_rep == 1:
@@ -208,15 +208,15 @@ def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
 
 def _gated_residual(x, y, gate):
     """
-    Applies gated residual connection with optional gate parameter.
+    应用带可选 gate 参数的门控残差连接。
     
     Args:
-        x: Input tensor (residual)
-        y: Output tensor to be added
-        gate: Optional gate tensor to modulate the addition
+        x: 输入张量（残差）
+        y: 待相加的输出张量
+        gate: 可选的门控张量，用于调制相加
         
     Returns:
-        x + y if gate is None, otherwise x + y * gate
+        当 gate 为 None 时返回 x + y，否则返回 x + y * gate
     """
     if x is None and y is None:
         return None
@@ -299,10 +299,10 @@ class GemmaAttention(nn.Module):
         cos, sin = position_embeddings
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
-        # Use cache if provided
+        # 如果提供了 cache 则使用
         if past_key_value is not None:
             if use_cache:
-                # sin and cos are specific to RoPE models; cache_position needed for the static cache
+                # sin 和 cos 是 RoPE 模型特有的；静态 cache 需要 cache_position
                 cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
                 key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
             else:
@@ -357,7 +357,7 @@ class GemmaDecoderLayer(GradientCheckpointingLayer):
         residual = hidden_states
         hidden_states, gate = self.input_layernorm(hidden_states, adarms_cond)
 
-        # Self Attention
+        # 自注意力
         hidden_states, self_attn_weights = self.self_attn(
             hidden_states=hidden_states,
             attention_mask=attention_mask,
@@ -371,7 +371,7 @@ class GemmaDecoderLayer(GradientCheckpointingLayer):
         )
         hidden_states = _gated_residual(residual, hidden_states, gate)
 
-        # Fully Connected
+        # 全连接
         residual = hidden_states
         hidden_states, gate = self.post_attention_layernorm(hidden_states, adarms_cond)
         hidden_states = self.mlp(hidden_states)
@@ -432,7 +432,7 @@ class GemmaModel(GemmaPreTrainedModel):
         self.rotary_emb = GemmaRotaryEmbedding(config=config)
         self.gradient_checkpointing = False
 
-        # Initialize weights and apply final processing
+        # 初始化权重并应用最终处理
         self.post_init()
 
     def get_input_embeddings(self):
@@ -500,22 +500,22 @@ class GemmaModel(GemmaPreTrainedModel):
             position_ids=position_ids,
         )
 
-        # embed positions
+        # 嵌入位置
         hidden_states = inputs_embeds
-        # Convert to bfloat16 if the first layer uses bfloat16
+        # 如果第一层使用 bfloat16，则转换为 bfloat16
         if len(self.layers) > 0 and self.layers[0].self_attn.q_proj.weight.dtype == torch.bfloat16:
             hidden_states = hidden_states.to(torch.bfloat16)
 
-        # create position embeddings to be shared across the decoder layers
+        # 创建位置编码，在各解码器层之间共享
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
-        # normalized
-        # Gemma downcasts the below to float16, causing sqrt(3072)=55.4256 to become 55.5
-        # See https://github.com/huggingface/transformers/pull/29402
+        # 已归一化
+        # Gemma 会将下面这行降为 float16，导致 sqrt(3072)=55.4256 变成 55.5
+        # 参见 https://github.com/huggingface/transformers/pull/29402
         normalizer = torch.tensor(self.config.hidden_size**0.5, dtype=hidden_states.dtype)
         #hidden_states = hidden_states * normalizer
 
-        # decoder layers
+        # 解码器层
         all_hidden_states = () if output_hidden_states else None
         all_self_attns = () if output_attentions else None
 
@@ -543,7 +543,7 @@ class GemmaModel(GemmaPreTrainedModel):
 
         hidden_states, _ = self.norm(hidden_states, adarms_cond)
 
-        # add hidden states from the last decoder layer
+        # 加上最后一个解码器层的隐藏状态
         if output_hidden_states:
             all_hidden_states += (hidden_states,)
 
@@ -570,7 +570,7 @@ class GemmaForCausalLM(GemmaPreTrainedModel, GenerationMixin):
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-        # Initialize weights and apply final processing
+        # 初始化权重并应用最终处理
         self.post_init()
 
     def get_input_embeddings(self):
@@ -639,7 +639,7 @@ class GemmaForCausalLM(GemmaPreTrainedModel, GenerationMixin):
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
 
-        # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
+        # 解码器输出由 (dec_features, layer_state, dec_hidden, dec_attn) 组成
         outputs: BaseModelOutputWithPast = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -655,7 +655,7 @@ class GemmaForCausalLM(GemmaPreTrainedModel, GenerationMixin):
         )
 
         hidden_states = outputs.last_hidden_state
-        # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
+        # 只计算必要的 logits；如果不计算 loss，就不要将它们上转回 float
         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
         logits = self.lm_head(hidden_states[:, slice_indices, :])
 
@@ -693,7 +693,7 @@ class GemmaForSequenceClassification(GemmaPreTrainedModel):
         self.model = GemmaModel(config)
         self.score = nn.Linear(config.hidden_size, self.num_labels, bias=False)
 
-        # Initialize weights and apply final processing
+        # 初始化权重并应用最终处理
         self.post_init()
 
     def get_input_embeddings(self):
@@ -751,7 +751,7 @@ class GemmaForSequenceClassification(GemmaPreTrainedModel):
         if self.config.pad_token_id is None:
             last_non_pad_token = -1
         elif input_ids is not None:
-            # To handle both left- and right- padding, we take the rightmost token that is not equal to pad_token_id
+            # 为了同时处理左填充和右填充，取最右侧不等于 pad_token_id 的 token
             non_pad_mask = (input_ids != self.config.pad_token_id).to(logits.device, torch.int32)
             token_indices = torch.arange(input_ids.shape[-1], device=logits.device, dtype=torch.int32)
             last_non_pad_token = (token_indices * non_pad_mask).argmax(-1)
@@ -792,7 +792,7 @@ class GemmaForTokenClassification(GemmaPreTrainedModel):
         self.dropout = nn.Dropout(classifier_dropout)
         self.score = nn.Linear(config.hidden_size, config.num_labels)
 
-        # Initialize weights and apply final processing
+        # 初始化权重并应用最终处理
         self.post_init()
 
     def get_input_embeddings(self):

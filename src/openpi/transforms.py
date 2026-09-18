@@ -23,45 +23,44 @@ S = TypeVar("S")
 @runtime_checkable
 class DataTransformFn(Protocol):
     def __call__(self, data: DataDict) -> DataDict:
-        """Apply transformation to the data.
+        """对数据应用变换。
 
         Args:
-            data: The data to apply the transform to. This is a possibly nested dictionary that contains
-                unbatched data elements. Each leaf is expected to be a numpy array. Using JAX arrays is allowed
-                but not recommended since it may result in extra GPU memory usage inside data loader worker
-                processes.
+            data: 需要应用该变换的数据。这是一个可能嵌套的字典，包含未批处理（unbatched）的
+                数据元素。每个叶子节点都应为 numpy 数组。允许使用 JAX 数组，但不推荐，
+                因为这可能在数据加载器的工作进程中导致额外的 GPU 显存占用。
 
         Returns:
-            The transformed data. Could be the input `data` that was modified in place, or a new data structure.
+            变换后的数据。可以是被就地修改的输入 `data`，也可以是一个新的数据结构。
         """
 
 
 @dataclasses.dataclass(frozen=True)
 class Group:
-    """A group of transforms."""
+    """一组变换。"""
 
-    # Transforms that are applied to the model input data.
+    # 应用于模型输入数据的变换。
     inputs: Sequence[DataTransformFn] = ()
 
-    # Transforms that are applied to the model output data.
+    # 应用于模型输出数据的变换。
     outputs: Sequence[DataTransformFn] = ()
 
     def push(self, *, inputs: Sequence[DataTransformFn] = (), outputs: Sequence[DataTransformFn] = ()) -> "Group":
-        """Append transforms to the group and return a new group.
+        """向组内追加变换并返回一个新的组。
 
         Args:
-            inputs: Appended to the *end* of the current input transforms.
-            outputs: Appended to the *beginning* of the current output transforms.
+            inputs: 追加到当前输入变换的*末尾*。
+            outputs: 追加到当前输出变换的*开头*。
 
         Returns:
-            A new group with the appended transforms.
+            一个包含已追加变换的新组。
         """
         return Group(inputs=(*self.inputs, *inputs), outputs=(*outputs, *self.outputs))
 
 
 @dataclasses.dataclass(frozen=True)
 class CompositeTransform(DataTransformFn):
-    """A composite transform that applies a sequence of transforms in order."""
+    """一个复合变换，按顺序应用一系列变换。"""
 
     transforms: Sequence[DataTransformFn]
 
@@ -72,16 +71,16 @@ class CompositeTransform(DataTransformFn):
 
 
 def compose(transforms: Sequence[DataTransformFn]) -> DataTransformFn:
-    """Compose a sequence of transforms into a single transform."""
+    """将一系列变换合成为单个变换。"""
     return CompositeTransform(transforms)
 
 
 @dataclasses.dataclass(frozen=True)
 class RepackTransform(DataTransformFn):
-    """Repacks an input dictionary into a new dictionary.
+    """将输入字典重新打包（repack）为一个新字典。
 
-    Repacking is defined using a dictionary where the keys are the new keys and the values
-    are the flattened paths to the old keys. We use '/' as the separator during flattening.
+    重新打包通过一个字典来定义，其中键为新键，值为指向旧键的扁平化路径。在扁平化过程中
+    我们使用 '/' 作为分隔符。
 
     Example:
     {
@@ -114,9 +113,9 @@ class InjectDefaultPrompt(DataTransformFn):
 @dataclasses.dataclass(frozen=True)
 class Normalize(DataTransformFn):
     norm_stats: at.PyTree[NormStats] | None
-    # If true, will use quantile normalization. Otherwise, normal z-score normalization will be used.
+    # 若为 true，则使用分位数（quantile）归一化；否则使用常规的 z-score 归一化。
     use_quantiles: bool = False
-    # If true, will raise an error if any of the keys in the norm stats are not present in the data.
+    # 若为 true，当归一化统计信息中的某个键在数据中不存在时会抛出错误。
     strict: bool = False
 
     def __post_init__(self):
@@ -148,7 +147,7 @@ class Normalize(DataTransformFn):
 @dataclasses.dataclass(frozen=True)
 class Unnormalize(DataTransformFn):
     norm_stats: at.PyTree[NormStats] | None
-    # If true, will use quantile normalization. Otherwise, normal z-score normalization will be used.
+    # 若为 true，则使用分位数（quantile）归一化；否则使用常规的 z-score 归一化。
     use_quantiles: bool = False
 
     def __post_init__(self):
@@ -159,7 +158,7 @@ class Unnormalize(DataTransformFn):
         if self.norm_stats is None:
             return data
 
-        # Make sure that all the keys in the norm stats are present in the data.
+        # 确保归一化统计信息中的所有键都存在于数据中。
         return apply_tree(
             data,
             self.norm_stats,
@@ -202,11 +201,11 @@ class SubsampleActions(DataTransformFn):
 
 @dataclasses.dataclass(frozen=True)
 class DeltaActions(DataTransformFn):
-    """Repacks absolute actions into delta action space."""
+    """将绝对动作重新打包为增量（delta）动作空间。"""
 
-    # Boolean mask for the action dimensions to be repacked into delta action space. Length
-    # can be smaller than the actual number of dimensions. If None, this transform is a no-op.
-    # See `make_bool_mask` for more details.
+    # 指示哪些动作维度要被重新打包为增量动作空间的布尔掩码。其长度
+    # 可以小于实际的维度数量。若为 None，则该变换不做任何操作。
+    # 更多细节见 `make_bool_mask`。
     mask: Sequence[bool] | None
 
     def __call__(self, data: DataDict) -> DataDict:
@@ -224,11 +223,11 @@ class DeltaActions(DataTransformFn):
 
 @dataclasses.dataclass(frozen=True)
 class AbsoluteActions(DataTransformFn):
-    """Repacks delta actions into absolute action space."""
+    """将增量动作重新打包为绝对动作空间。"""
 
-    # Boolean mask for the action dimensions to be repacked into absolute action space. Length
-    # can be smaller than the actual number of dimensions. If None, this transform is a no-op.
-    # See `make_bool_mask` for more details.
+    # 指示哪些动作维度要被重新打包为绝对动作空间的布尔掩码。其长度
+    # 可以小于实际的维度数量。若为 None，则该变换不做任何操作。
+    # 更多细节见 `make_bool_mask`。
     mask: Sequence[bool] | None
 
     def __call__(self, data: DataDict) -> DataDict:
@@ -297,7 +296,7 @@ class ExtractFASTActions(DataTransformFn):
     def __call__(self, data: DataDict) -> DataDict:
         if "actions" not in data:
             return data
-        # Model outputs are saved in "actions", but for FAST models they represent tokens.
+        # 模型输出保存在 "actions" 中，但对于 FAST 模型而言它们表示的是 token。
         tokens = data.pop("actions")
         actions = self.tokenizer.extract_actions(tokens.astype(np.int32), self.action_horizon, self.action_dim)
         return {
@@ -308,9 +307,9 @@ class ExtractFASTActions(DataTransformFn):
 
 @dataclasses.dataclass(frozen=True)
 class PromptFromLeRobotTask(DataTransformFn):
-    """Extracts a prompt from the current LeRobot dataset task."""
+    """从当前的 LeRobot 数据集任务中提取一个提示（prompt）。"""
 
-    # Contains the LeRobot dataset tasks (dataset.meta.tasks).
+    # 包含 LeRobot 数据集的任务（dataset.meta.tasks）。
     tasks: dict[int, str]
 
     def __call__(self, data: DataDict) -> DataDict:
@@ -326,7 +325,7 @@ class PromptFromLeRobotTask(DataTransformFn):
 
 @dataclasses.dataclass(frozen=True)
 class PadStatesAndActions(DataTransformFn):
-    """Zero-pads states and actions to the model action dimension."""
+    """将状态和动作零填充（zero-pad）到模型的动作维度。"""
 
     model_action_dim: int
 
@@ -338,42 +337,39 @@ class PadStatesAndActions(DataTransformFn):
 
 
 def flatten_dict(tree: at.PyTree) -> dict:
-    """Flatten a nested dictionary. Uses '/' as the separator."""
+    """扁平化一个嵌套字典。使用 '/' 作为分隔符。"""
     return traverse_util.flatten_dict(tree, sep="/")
 
 
 def unflatten_dict(tree: dict) -> at.PyTree:
-    """Unflatten a flattened dictionary. Assumes that '/' was used as a separator."""
+    """还原一个已扁平化的字典。假设之前使用 '/' 作为分隔符。"""
     return traverse_util.unflatten_dict(tree, sep="/")
 
 
 def transform_dict(patterns: Mapping[str, str | None], tree: at.PyTree) -> at.PyTree:
-    """Transform the structure of a nested dictionary using a set of patterns.
+    """使用一组模式（patterns）来转换嵌套字典的结构。
 
-    The transformation is defined using the `patterns` dictionary. The keys are the
-    input keys that should be matched and the values are the new names inside the output
-    dictionary. If the value is None, the input key is removed.
+    该转换通过 `patterns` 字典来定义。键为需要匹配的输入键，值为输出字典中的
+    新名称。若值为 None，则删除该输入键。
 
-    Both keys and values should represent flattened paths using '/' as the separator.
-    Keys can be regular expressions and values can include backreferences to the
-    matched groups (see `re.sub` for more details). Note that the regular expression
-    must match the entire key.
+    键和值都应表示使用 '/' 作为分隔符的扁平化路径。
+    键可以是正则表达式，值可以包含对已匹配分组的反向引用（更多细节见 `re.sub`）。
+    注意，正则表达式必须完整匹配整个键。
 
-    The order inside the `patterns` dictionary is important. Only the first pattern that
-    matches the input key will be used.
+    `patterns` 字典内部的顺序很重要。只有第一个匹配输入键的模式会被使用。
 
-    See unit tests for more examples.
+    更多示例见单元测试。
 
     Args:
-        patterns: A mapping from old keys to new keys.
-        tree: The nested dictionary to transform.
+        patterns: 从旧键到新键的映射。
+        tree: 需要转换的嵌套字典。
 
     Returns:
-        The transformed nested dictionary.
+        转换后的嵌套字典。
     """
     data = flatten_dict(tree)
 
-    # Compile the patterns.
+    # 编译这些模式。
     compiled = {re.compile(k): v for k, v in patterns.items()}
 
     output = {}
@@ -383,7 +379,7 @@ def transform_dict(patterns: Mapping[str, str | None], tree: at.PyTree) -> at.Py
                 new_k = pattern.sub(repl, k, count=1) if repl is not None else None
                 break
         else:
-            # Use the original key if no match is found.
+            # 若未找到匹配，则使用原始键。
             new_k = k
 
         if new_k is not None:
@@ -391,7 +387,7 @@ def transform_dict(patterns: Mapping[str, str | None], tree: at.PyTree) -> at.Py
                 raise ValueError(f"Key '{new_k}' already exists in output")
             output[new_k] = data[k]
 
-    # Validate the output structure to make sure that it can be unflattened.
+    # 校验输出结构，以确保它可以被还原（unflatten）。
     names = sorted(output)
     for i in range(len(names) - 1):
         name, next_name = names[i : i + 2]
@@ -421,7 +417,7 @@ def apply_tree(
 
 
 def pad_to_dim(x: np.ndarray, target_dim: int, axis: int = -1, value: float = 0.0) -> np.ndarray:
-    """Pad an array to the target dimension with zeros along the specified axis."""
+    """沿指定轴将一个数组零填充到目标维度。"""
     current_dim = x.shape[axis]
     if current_dim < target_dim:
         pad_width = [(0, 0)] * len(x.shape)
@@ -431,17 +427,17 @@ def pad_to_dim(x: np.ndarray, target_dim: int, axis: int = -1, value: float = 0.
 
 
 def make_bool_mask(*dims: int) -> tuple[bool, ...]:
-    """Make a boolean mask for the given dimensions.
+    """为给定的各维度长度生成一个布尔掩码。
 
     Example:
         make_bool_mask(2, -2, 2) == (True, True, False, False, True, True)
         make_bool_mask(2, 0, 2) == (True, True, True, True)
 
     Args:
-        dims: The dimensions to make the mask for.
+        dims: 用于生成掩码的各维度长度。
 
     Returns:
-        A tuple of booleans.
+        一个布尔值元组。
     """
     result = []
     for dim in dims:

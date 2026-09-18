@@ -43,7 +43,7 @@ class FsqCodebook(nn.Module):
     @staticmethod
     def _get_bins_fsq(target_codebook_size: int) -> tuple[int]:
         """
-        Get bins per dimension based on codebook size, from the original FSQ paper.
+        根据码本大小获取每维的分箱数，取自原始 FSQ 论文。
         """
         if target_codebook_size == 2**8:
             return (8, 6, 5)
@@ -75,7 +75,7 @@ class FsqCodebook(nn.Module):
     @staticmethod
     def _get_bins_lfq(target_codebook_size: int) -> tuple[int]:
         """
-        Get bins per dimension according to the Lookup-Free Quantization paper (2 bins per dimension)
+        根据 Lookup-Free Quantization 论文获取每维的分箱数（每维 2 个分箱）
         """
         assert target_codebook_size & (target_codebook_size - 1) == 0, "Codebook size should be a power of two for LFQ"
 
@@ -96,7 +96,7 @@ class FsqCodebook(nn.Module):
         x = self.proj_down(inputs)
         z = jnp.tanh(x)
 
-        # Quantize
+        # 量化
         digits = jnp.round((z + 1) * (bases - 1) / 2).astype(jnp.int32)
         tokens = self.undigitize(digits)
 
@@ -207,7 +207,7 @@ class LookupFreeQuantization(nn.Module):
         tokens = jnp.argmin(token_squared_distances, axis=-1)
 
         token_bit_log_probs = -token_squared_distances
-        # Compute token log probs for tokens 0..2^num_dims-1 by summing corresponding log-probs
+        # 通过对对应的 log-prob 求和，计算 token 0..2^num_dims-1 的 token log 概率
         token_bit_expansions = jnp.bitwise_and(
             jnp.arange(2**self.num_dims)[None, :], 2 ** jnp.arange(self.num_dims)[:, None]
         ).astype(jnp.int32)
@@ -240,24 +240,23 @@ def make_block_causal_attention_matrix(q: jnp.ndarray, k: jnp.ndarray, bs_q: int
 
 
 class GeGLU(Module):
-    """Gated Linear Unit with GELU (GeGLU) activation function.
-    GeGLU is a Flax layer that combines a linear transformation with a GELU
-    activation function in a gating mechanism. It is often used in Transformer models
-    to provide non-linear capabilities while preserving a strong linear component.
+    """带 GELU 的門控线性单元（GeGLU）激活函数。
+    GeGLU 是一个 Flax 层，它将线性变换与 GELU 激活函数结合在门控机制中。它常用于
+    Transformer 模型中，在保留较强线性成分的同时提供非线性能力。
 
     Attributes:
-        features: the number of output features (default: None).
+        features: 输出特征数（默认：None）。
     """
 
     output_dim: int = -1
 
     @compact
     def __call__(self, inputs: Array) -> Array:
-        """Applies the GeGLU activation to the inputs.
+        """将 GeGLU 激活应用于输入。
         Args:
-            inputs: the nd-array to apply the GeGLU activation function to.
+            inputs: 需要应用 GeGLU 激活函数的 nd 数组。
         Returns:
-            The transformed input.
+            变换后的输入。
         """
         output_dim = inputs.shape[-1] if self.output_dim == -1 else self.output_dim
 
@@ -287,14 +286,14 @@ class CrossAttentionLayer(nn.Module):
         seq_len_k = y.shape[-2]
 
         if self.causal:
-            # One block size will be 1
+            # 其中一个块尺寸将为 1
             bs_q = max(seq_len_q // seq_len_k, 1)
             bs_k = max(seq_len_k // seq_len_q, 1)
 
             mask_self = nn.make_causal_mask(x[..., 0])
             mask_cross = make_block_causal_attention_matrix(x[..., 0], y[..., 0], bs_q, bs_k)
 
-        # Self-attention block
+        # 自注意力块
         skip = x
         x = nn.LayerNorm()(x)
         x = nn.MultiHeadDotProductAttention(
@@ -304,7 +303,7 @@ class CrossAttentionLayer(nn.Module):
         )(x, x, x, mask=mask_self)
         x = skip + x
 
-        # Cross-attention block
+        # 交叉注意力块
         skip = x
         x = nn.LayerNorm()(x)
         x = nn.MultiHeadDotProductAttention(
@@ -314,7 +313,7 @@ class CrossAttentionLayer(nn.Module):
         )(x, y, y, mask=mask_cross)
         x = skip + x
 
-        # MLP block
+        # MLP 块
         skip = x
         x = nn.LayerNorm()(x)
         x = nn.Dense(int(d_embed * self.mlp_ratio))(x)
@@ -360,7 +359,7 @@ class TokenizerEncoderDecoder(nn.Module):
         x = jax.numpy.broadcast_to(x, y.shape[:-2] + x.shape[-2:])
 
         if mask is not None:
-            # mask is (batch_dims..., num_cross_tokens)
+            # mask 为 (batch_dims..., num_cross_tokens)
             chex.assert_equal_shape([y[..., 0], mask])
             attn_mask = einops.repeat(mask, "... kv -> ... 1 q kv", q=self.num_tokens)
         else:
@@ -446,14 +445,14 @@ class FsqAttentionTokenizer(nn.Module):
     def loss(
         self, action: jnp.ndarray, *, obs: jnp.ndarray | None = None, train: bool = True
     ) -> tuple[jnp.ndarray, dict[str, jnp.ndarray]]:
-        # Encode
+        # 编码
         x = self.proj(action)
         z = self.encoder(x, train=train, state_conditioning=obs)
 
-        # Quantize
+        # 量化
         tokens, z = self.codebook(z)
 
-        # Decode
+        # 解码
         x = self.decoder(z, train=train, state_conditioning=obs)
         mean = self.proj_mean(x) * self.out_scale
 
@@ -467,6 +466,6 @@ class FsqAttentionTokenizer(nn.Module):
 
     def __call__(self, *args: Any, **kwargs: Any) -> tuple[jnp.ndarray, dict[str, jnp.ndarray]]:
         """
-        Dummy for .init
+        为 .init 提供的占位函数
         """
         return self.loss(*args, **kwargs)

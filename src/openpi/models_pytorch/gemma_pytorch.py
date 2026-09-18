@@ -126,21 +126,21 @@ class PaliGemmaWithExpertModel(nn.Module):
             models = [self.paligemma.language_model, self.gemma_expert.model]
             num_layers = self.paligemma.config.text_config.num_hidden_layers
 
-            # Check if gradient checkpointing is enabled for any of the models
+            # 检查是否有任何模型启用了梯度检查点
             use_gradient_checkpointing = (
                 hasattr(self.gemma_expert.model, "gradient_checkpointing")
                 and self.gemma_expert.model.gradient_checkpointing
                 and self.training
             ) or (hasattr(self, "gradient_checkpointing") and self.gradient_checkpointing and self.training)
 
-            # Force enable gradient checkpointing if we're in training mode and the model supports it
+            # 如果处于训练模式且模型支持，则强制启用梯度检查点
             if self.training and hasattr(self.gemma_expert.model, "gradient_checkpointing"):
                 if not self.gemma_expert.model.gradient_checkpointing:
                     print("Forcing gradient checkpointing to be enabled for Gemma expert model")
                     self.gemma_expert.model.gradient_checkpointing = True
                 use_gradient_checkpointing = True
 
-            # Debug gradient checkpointing status
+            # 调试梯度检查点的状态
             if hasattr(self, "_debug_gc_printed") and not self._debug_gc_printed:
                 print(f"Gemma expert model gradient checkpointing: {use_gradient_checkpointing}")
                 print(f"Model training mode: {self.training}")
@@ -153,7 +153,7 @@ class PaliGemmaWithExpertModel(nn.Module):
                     )
                 self._debug_gc_printed = True
 
-            # Define the complete layer computation function for gradient checkpointing
+            # 定义用于梯度检查点的完整层计算函数
             def compute_layer_complete(layer_idx, inputs_embeds, attention_mask, position_ids, adarms_cond):
                 models = [self.paligemma.language_model, self.gemma_expert.model]
 
@@ -176,7 +176,7 @@ class PaliGemmaWithExpertModel(nn.Module):
                     key_states.append(key_state)
                     value_states.append(value_state)
 
-                # Concatenate and process attention
+                # 拼接并处理注意力
                 query_states = torch.cat(query_states, dim=2)
                 key_states = torch.cat(key_states, dim=2)
                 value_states = torch.cat(value_states, dim=2)
@@ -196,7 +196,7 @@ class PaliGemmaWithExpertModel(nn.Module):
                 batch_size = query_states.shape[0]
                 scaling = self.paligemma.language_model.layers[layer_idx].self_attn.scaling
 
-                # Attention computation
+                # 注意力计算
                 att_output, _ = modeling_gemma.eager_attention_forward(
                     self.paligemma.language_model.layers[layer_idx].self_attn,
                     query_states,
@@ -205,11 +205,11 @@ class PaliGemmaWithExpertModel(nn.Module):
                     attention_mask,
                     scaling,
                 )
-                # Get head_dim from the current layer, not from the model
+                # 从当前层（而非模型）获取 head_dim
                 head_dim = self.paligemma.language_model.layers[layer_idx].self_attn.head_dim
                 att_output = att_output.reshape(batch_size, -1, 1 * 8 * head_dim)
 
-                # Process layer outputs
+                # 处理各层的输出
                 outputs_embeds = []
                 start_pos = 0
                 for i, hidden_states in enumerate(inputs_embeds):
@@ -220,23 +220,23 @@ class PaliGemmaWithExpertModel(nn.Module):
                         att_output = att_output.to(layer.self_attn.o_proj.weight.dtype)
                     out_emb = layer.self_attn.o_proj(att_output[:, start_pos:end_pos])
 
-                    # first residual
+                    # 第一次残差
                     out_emb = modeling_gemma._gated_residual(hidden_states, out_emb, gates[i])  # noqa: SLF001
                     after_first_residual = out_emb.clone()
                     out_emb, gate = layer.post_attention_layernorm(out_emb, cond=adarms_cond[i])
-                    # Convert to bfloat16 if the next layer (mlp) uses bfloat16
+                    # 如果下一层（mlp）使用 bfloat16，则转换为 bfloat16
                     if layer.mlp.up_proj.weight.dtype == torch.bfloat16:
                         out_emb = out_emb.to(dtype=torch.bfloat16)
 
                     out_emb = layer.mlp(out_emb)
-                    # second residual
+                    # 第二次残差
                     out_emb = modeling_gemma._gated_residual(after_first_residual, out_emb, gate)  # noqa: SLF001
                     outputs_embeds.append(out_emb)
                     start_pos = end_pos
 
                 return outputs_embeds
 
-            # Process all layers with gradient checkpointing if enabled
+            # 如果启用，则使用梯度检查点处理所有层
             for layer_idx in range(num_layers):
                 if use_gradient_checkpointing:
                     inputs_embeds = torch.utils.checkpoint.checkpoint(
@@ -254,10 +254,10 @@ class PaliGemmaWithExpertModel(nn.Module):
                         layer_idx, inputs_embeds, attention_mask, position_ids, adarms_cond
                     )
 
-                # Old code removed - now using compute_layer_complete function above
+                # 旧代码已移除——现在使用上面的 compute_layer_complete 函数
 
-            # final norm
-            # Define final norm computation function for gradient checkpointing
+            # 最终归一化
+            # 定义用于梯度检查点的最终归一化计算函数
             def compute_final_norms(inputs_embeds, adarms_cond):
                 outputs_embeds = []
                 for i, hidden_states in enumerate(inputs_embeds):
@@ -265,7 +265,7 @@ class PaliGemmaWithExpertModel(nn.Module):
                     outputs_embeds.append(out_emb)
                 return outputs_embeds
 
-            # Apply gradient checkpointing to final norm if enabled
+            # 如果启用，则对最终归一化应用梯度检查点
             if use_gradient_checkpointing:
                 outputs_embeds = torch.utils.checkpoint.checkpoint(
                     compute_final_norms, inputs_embeds, adarms_cond, use_reentrant=False, preserve_rng_state=False

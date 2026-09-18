@@ -21,25 +21,24 @@ PALIGEMMA_EOS_TOKEN = 1
 
 
 def make_attn_mask(input_mask, mask_ar):
-    """Adapted from big_vision.
+    """改编自 big_vision。
 
-    Tokens can attend to valid inputs tokens which have a cumulative mask_ar
-    smaller or equal to theirs. This way `mask_ar` bool[?B, N] can be used to
-    setup several types of attention, for example:
+    token 可以 attends 那些累积 mask_ar 小于或等于自身的有效输入 token。这样 `mask_ar` bool[?B, N]
+    可以用来设置几种不同类型的注意力，例如：
 
-      [[1 1 1 1 1 1]]: pure causal attention.
+      [[1 1 1 1 1 1]]：纯因果注意力。
 
-      [[0 0 0 1 1 1]]: prefix-lm attention. The first 3 tokens can attend between
-          themselves and the last 3 tokens have a causal attention. The first
-          entry could also be a 1 without changing behaviour.
+      [[0 0 0 1 1 1]]：prefix-lm 注意力。前 3 个 token 之间可以相互
+          attends，而后 3 个 token 具有因果注意力。第一个
+          条目也可以设为 1 而不改变行为。
 
-      [[1 0 1 0 1 0 0 1 0 0]]: causal attention between 4 blocks. Tokens of a
-          block can attend all previous blocks and all tokens on the same block.
+      [[1 0 1 0 1 0 0 1 0 0]]：4 个块之间的因果注意力。一个块内的 token
+          可以 attends 所有之前的块以及同一块内的所有 token。
 
     Args:
-      input_mask: bool[B, N] true if its part of the input, false if padding.
-      mask_ar: bool[?B, N] mask that's true where previous tokens cannot depend on
-        it and false where it shares the same attention mask as the previous token.
+      input_mask: bool[B, N]，若属于输入则为 true，若为填充则为 false。
+      mask_ar: bool[?B, N] mask，在前一个 token 不能依赖于它的位置为 true，
+        在与前一个 token 共享相同注意力 mask 的位置为 false。
     """
     mask_ar = jnp.broadcast_to(mask_ar, input_mask.shape)
     cumsum = jnp.cumsum(mask_ar, axis=1)
@@ -50,8 +49,8 @@ def make_attn_mask(input_mask, mask_ar):
 
 @jax.vmap
 def left_to_right_align(x, input_mask, attn_mask):
-    """Converts input from left-align to right-aligned."""
-    # Due to vmap, this is operating in a single example (not batch level).
+    """将输入从左对齐转换为右对齐。"""
+    # 由于 vmap 的作用，这里是在单个样本上操作（而非批次级别）。
     assert x.ndim == 2
     assert input_mask.ndim == 1
     assert attn_mask.ndim == 2
@@ -65,7 +64,7 @@ def left_to_right_align(x, input_mask, attn_mask):
 
 
 def put_along_last_axis(arr, indices, values):
-    """Like np.put_along_axis(..., axis=-1), since jax is missing it."""
+    """类似于 np.put_along_axis(..., axis=-1)，因为 jax 缺少该函数。"""
     assert arr.ndim == indices.ndim == values.ndim, (arr.ndim, indices.ndim, values.ndim)
     onehot = jax.nn.one_hot(indices, arr.shape[-1], dtype=values.dtype)
     put_mask = jnp.einsum("...i,...in->...n", jnp.ones(values.shape, jnp.int32), onehot)
@@ -78,14 +77,14 @@ class Pi0FASTConfig(_model.BaseModelConfig):
     dtype: str = "bfloat16"
     paligemma_variant: _gemma.Variant = "gemma_2b"
 
-    # Set the model specific defaults.
+    # 设置模型特定的默认值。
     action_dim: int = 32
     action_horizon: int = 32
     max_token_len: int = 250
 
-    # Tokenizer for the fast model.
+    # fast 模型使用的分词器。
     fast_model_tokenizer: Any | None = None
-    # Keyword arguments for the fast model tokenizer.
+    # fast 模型分词器的关键字参数。
     fast_model_tokenizer_kwargs: dict[str, Any] | None = None
 
     @property
@@ -125,7 +124,7 @@ class Pi0FASTConfig(_model.BaseModelConfig):
         return observation_spec, action_spec
 
     def get_freeze_filter(self) -> nnx.filterlib.Filter:
-        """Returns the freeze filter based on the model config."""
+        """返回基于模型配置的 freeze filter。"""
         if "lora" in self.paligemma_variant:
             return nnx.All(nnx_utils.PathRegex(".*llm.*"), nnx.Not(nnx_utils.PathRegex(".*lora.*")))
         return nnx.Nothing
@@ -163,7 +162,7 @@ class Pi0FAST(_model.BaseModel):
         input_mask = []
         ar_mask = []
         token_embeddings = []
-        # embed images
+        # 嵌入图像
         for name in obs.images:
             image_token_embeddings, _ = self.PaliGemma.img(obs.images[name], train=False)
 
@@ -175,10 +174,10 @@ class Pi0FAST(_model.BaseModel):
                     s=image_token_embeddings.shape[1],
                 )
             )
-            # image tokens attend to each other --> AR mask = 0
+            # 图像 token 之间相互 attends --> AR mask = 0
             ar_mask.append(0 * input_mask[-1])
 
-        # add tokenized inputs
+        # 添加 token 化的输入
         assert obs.tokenized_prompt is not None, "Tokenized prompt is required"
         assert obs.tokenized_prompt_mask is not None, "Tokenized prompt mask is required"
         assert obs.token_ar_mask is not None, "Token auto-regressive mask is required"
@@ -187,7 +186,7 @@ class Pi0FAST(_model.BaseModel):
         input_mask.append(obs.tokenized_prompt_mask)
         ar_mask.append(obs.token_ar_mask)
 
-        # return embeddings, input mask, and ar mask
+        # 返回嵌入、input mask 和 ar mask
         return (
             jnp.concatenate(token_embeddings, axis=1),
             jnp.concatenate(input_mask, axis=1),
@@ -202,31 +201,31 @@ class Pi0FAST(_model.BaseModel):
             rng, observation, train=train, image_keys=list(observation.images.keys())
         )
 
-        # Compute inputs: one big forward pass of prefix + suffix at once
+        # 计算输入：一次性对 prefix + suffix 进行完整的前向传播
         input_token_embeddings, input_mask, ar_mask = self.embed_inputs(observation)
         attn_mask = make_attn_mask(input_mask, ar_mask)
 
-        # Compute one-hot targets: we predict *next* token, so shift the input tokens by one.
+        # 计算 one-hot 目标：我们预测的是 *下一个* token，因此将输入 token 向前平移一位。
         targets = jax.nn.one_hot(
             observation.tokenized_prompt[:, 1:],
             self.PaliGemma.llm.module.vocab_size,
         )
 
-        # Each input predicts *next* token, so we don't input the last token.
+        # 每个输入预测的是 *下一个* token，因此我们不输入最后一个 token。
         pre_logits, _, _ = self.PaliGemma.llm(
             embedded_prefix=input_token_embeddings[:, :-1],
             mask=attn_mask[:, :-1, :-1],
             return_prelogits=True,
         )
 
-        # Only decode logits for the target tokens to save memory
-        # (decoding matmul is large because it is a seq_len x vocab_size dense layer).
+        # 仅对目标 token 解码 logits 以节省显存
+        # （解码 matmul 很大，因为它是一个 seq_len x vocab_size 的 dense 层）。
         logits, _ = self.PaliGemma.llm(
             pre_logits=pre_logits[:, -targets.shape[1] :],
         )
         logp = jax.nn.log_softmax(logits, axis=-1)
 
-        # Compute CE loss on token targets
+        # 在 token 目标上计算交叉熵（CE）损失
         assert observation.token_loss_mask is not None, "Token loss mask is required"
         loss_mask = observation.token_loss_mask[:, 1:]
         token_pplx = jnp.sum(targets * logp, axis=-1)
@@ -241,16 +240,16 @@ class Pi0FAST(_model.BaseModel):
         max_decoding_steps: int | at.Int[at.Array, ""] = 256,
         temperature: float = 0.0,
     ) -> _model.Actions:
-        # TODO: this is a hack to get the image keys.
+        # TODO：这是一个获取 image keys 的 hack。
         observation = _model.preprocess_observation(
             None, observation, train=False, image_keys=list(observation.images.keys())
         )
 
-        # embed inputs
+        # 嵌入输入
         prefix_token_embeddings, prefix_mask, prefix_ar_mask = self.embed_inputs(observation)
         prefix_attn_mask = make_attn_mask(prefix_mask, prefix_ar_mask)
 
-        # left to right align all input token sequences
+        # 将所有输入 token 序列左对齐转为右对齐
         prefix_token_embeddings, prefix_mask, prefix_attn_mask = left_to_right_align(
             prefix_token_embeddings, prefix_mask, prefix_attn_mask
         )
@@ -258,23 +257,23 @@ class Pi0FAST(_model.BaseModel):
         prefill_len = jnp.sum(prefix_mask, axis=-1)
         prefix_start = prefill_size - prefill_len
 
-        # first fill KV cache with a forward pass of the prefix
-        # pad attention mask to set the size of the KV cache (prefill_size + max_decoding_steps)
+        # 首先通过一次 prefix 前向传播来填充 KV 缓存
+        # 对注意力掩码进行填充，以设置 KV 缓存的大小（prefill_size + max_decoding_steps）
         prefix_attn_mask = jnp.pad(prefix_attn_mask, ((0, 0), (0, 0), (0, max_decoding_steps)))
         prefix_positions = jnp.cumsum(prefix_mask, axis=-1) - 1
         prefix_logits, kv_cache, _ = self.PaliGemma.llm(
             embedded_prefix=prefix_token_embeddings, mask=prefix_attn_mask, positions=prefix_positions, decode=True
         )
 
-        # prepare decoding -- final logit decodes the first token
+        # 准备解码 -- 最后的 logit 会解码出第一个 token
         last_logit = prefix_logits[:, -1:]
         output_tokens = jnp.zeros((last_logit.shape[0], max_decoding_steps))
 
         def step(carry):
             rng, last_logit, output_tokens, cache, _, step = carry
 
-            # Sample token from last logit
-            # Split RNG for this step
+            # 从最后的 logit 采样 token
+            # 为此步骤拆分 RNG
             rng, rng_step = jax.random.split(rng)
             token = jax.lax.cond(
                 temperature > 0.0,
@@ -284,11 +283,11 @@ class Pi0FAST(_model.BaseModel):
             )
             output_tokens = put_along_last_axis(output_tokens, jnp.broadcast_to(step, (token.shape[0], 1)), token)
 
-            # Check for early stopping --> stop if all batch elements have EOS token
+            # 检查是否可提前停止 --> 若所有批次元素都出现 EOS token 则停止
             has_eos = jnp.any(token == PALIGEMMA_EOS_TOKEN, axis=-1)
             all_eos = jnp.all(has_eos)
 
-            # Decode one step
+            # 解码一步
             token_embedding = self.PaliGemma.llm(token, embed_only=True)
             positions = prefill_len[:, None] + step + 1
             mask = jnp.logical_and(
@@ -306,7 +305,7 @@ class Pi0FAST(_model.BaseModel):
             _, _, _, _, all_eos, step = carry
             return (~all_eos) & (step < max_decoding_steps)
 
-        # Use lax.while_loop so we can jit the full decoding loop.
+        # 使用 lax.while_loop，从而可以对完整的解码循环进行 jit。
         _, _, output_tokens, _, _, _ = jax.lax.while_loop(
             cond, step, (rng, last_logit, output_tokens, kv_cache, False, 0)
         )

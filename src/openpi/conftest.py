@@ -9,7 +9,7 @@ def set_jax_cpu_backend_if_no_gpu() -> None:
         pynvml.nvmlInit()
         pynvml.nvmlShutdown()
     except pynvml.NVMLError:
-        # No GPU found.
+        # 未检测到 GPU。
         os.environ["JAX_PLATFORMS"] = "cpu"
 
 

@@ -25,8 +25,8 @@ class TrainState:
 
 @at.typecheck
 def tree_to_info(tree: at.PyTree, interp_func: Callable[[Any], str] = str) -> str:
-    """Converts a PyTree into a human-readable string for logging. Optionally, `interp_func` can be provided to convert
-    the leaf values to more meaningful strings.
+    """将 PyTree 转换为供日志阅读的人类可读字符串。可选地，可以提供 `interp_func` 来将叶
+    子值转换为更有意义的字符串。
     """
     tree, _ = jax.tree_util.tree_flatten_with_path(tree)
     return "\n".join(f"{jax.tree_util.keystr(path)}: {interp_func(value)}" for path, value in tree)
@@ -34,5 +34,5 @@ def tree_to_info(tree: at.PyTree, interp_func: Callable[[Any], str] = str) -> st
 
 @at.typecheck
 def array_tree_to_info(tree: at.PyTree) -> str:
-    """Converts a PyTree of arrays into a human-readable string for logging."""
+    """将数组组成的 PyTree 转换为供日志阅读的人类可读字符串。"""
     return tree_to_info(tree, lambda x: f"{x.shape}@{x.dtype}")

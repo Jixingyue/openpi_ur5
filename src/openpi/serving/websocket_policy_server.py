@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class WebsocketPolicyServer:
-    """Serves a policy using the websocket protocol. See websocket_client_policy.py for a client implementation.
+    """使用 websocket 协议对外提供策略服务。客户端实现参见 websocket_client_policy.py。
 
-    Currently only implements the `load` and `infer` methods.
+    目前仅实现了 `load` 和 `infer` 方法。
     """
 
     def __init__(
@@ -65,7 +65,7 @@ class WebsocketPolicyServer:
                     "infer_ms": infer_time * 1000,
                 }
                 if prev_total_time is not None:
-                    # We can only record the last total time since we also want to include the send time.
+                    # 我们只能记录上一次的总时间，因为我们还想把发送时间也包含进来。
                     action["server_timing"]["prev_total_ms"] = prev_total_time * 1000
 
                 await websocket.send(packer.pack(action))
@@ -86,5 +86,5 @@ class WebsocketPolicyServer:
 def _health_check(connection: _server.ServerConnection, request: _server.Request) -> _server.Response | None:
     if request.path == "/healthz":
         return connection.respond(http.HTTPStatus.OK, "OK\n")
-    # Continue with the normal request handling.
+    # 继续正常的请求处理。
     return None

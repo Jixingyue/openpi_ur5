@@ -20,7 +20,7 @@ T_co = TypeVar("T_co", covariant=True)
 
 
 class Dataset(Protocol[T_co]):
-    """Interface for a dataset with random access."""
+    """支持随机访问的数据集接口。"""
 
     def __getitem__(self, index: SupportsIndex) -> T_co:
         raise NotImplementedError("Subclasses of Dataset should implement __getitem__.")
@@ -30,7 +30,7 @@ class Dataset(Protocol[T_co]):
 
 
 class IterableDataset(Protocol[T_co]):
-    """Interface for an iterable dataset."""
+    """可迭代数据集的接口。"""
 
     def __iter__(self) -> Iterator[T_co]:
         raise NotImplementedError("Subclasses of IterableDataset should implement __iter__.")
@@ -40,10 +40,10 @@ class IterableDataset(Protocol[T_co]):
 
 
 class DataLoader(Protocol[T_co]):
-    """Interface for a data loader."""
+    """数据加载器的接口。"""
 
     def data_config(self) -> _config.DataConfig:
-        """Get the data config for this data loader."""
+        """获取此数据加载器的数据配置。"""
         raise NotImplementedError("Subclasses of DataLoader should implement data_config.")
 
     def __iter__(self) -> Iterator[T_co]:
@@ -77,17 +77,17 @@ class IterableTransformedDataset(IterableDataset[T_co]):
     def __iter__(self):
         for sample in self._dataset:
             if self._is_batched:
-                # Transforms are designed to be applied to individual samples. So we need to split the batch into
-                # individual samples and apply the transform to each sample individually.
+                # 变换被设计为作用于单个样本。所以我们需要将批次拆分为
+                # 单个样本，并逐个样本地应用变换。
                 batch_size = next(v.shape[0] for v in sample.values())
 
-                # Split batch into individual samples using tree_map
+                # 使用 tree_map 将批次拆分为单个样本
                 individual_samples = [jax.tree.map(lambda x: x[i], sample) for i in range(batch_size)]  # noqa: B023
 
-                # Transform each sample
+                # 变换每个样本
                 transformed = [self._transform(s) for s in individual_samples]
 
-                # Recombine batch with tree_map
+                # 使用 tree_map 重新合并批次
                 yield jax.tree.map(lambda *x: np.stack(x, axis=0), *transformed)
             else:
                 yield self._transform(sample)
@@ -107,7 +107,7 @@ class FakeDataset(Dataset):
         def make_from_spec(spec: jax.ShapeDtypeStruct):
             nonlocal rng
             rng, data_rng = jax.random.split(rng)
-            # Remove the batch dimension.
+            # 移除批次维度。
             shape = spec.shape[1:]
             if spec.dtype == jnp.float32:
                 return jax.random.uniform(data_rng, shape=shape, minval=-1.0, maxval=1.0)
@@ -130,7 +130,7 @@ class FakeDataset(Dataset):
 def create_torch_dataset(
     data_config: _config.DataConfig, action_horizon: int, model_config: _model.BaseModelConfig
 ) -> Dataset:
-    """Create a dataset for training."""
+    """为训练创建数据集。"""
     repo_id = data_config.repo_id
     if repo_id is None:
         raise ValueError("Repo ID is not set. Cannot create dataset.")
@@ -158,7 +158,7 @@ def create_rlds_dataset(
     *,
     shuffle: bool = False,
 ) -> Dataset:
-    # At the moment, we only support DROID for RLDS datasets.
+    # 目前，对于 RLDS 数据集我们仅支持 DROID。
     return DroidRldsDataset(
         data_dir=data_config.rlds_data_dir,
         batch_size=batch_size,
@@ -170,7 +170,7 @@ def create_rlds_dataset(
 
 
 def transform_dataset(dataset: Dataset, data_config: _config.DataConfig, *, skip_norm_stats: bool = False) -> Dataset:
-    """Transform the dataset by applying the data transforms."""
+    """通过应用数据变换来变换数据集。"""
     norm_stats = {}
     if data_config.repo_id != "fake" and not skip_norm_stats:
         if data_config.norm_stats is None:
@@ -198,7 +198,7 @@ def transform_iterable_dataset(
     skip_norm_stats: bool = False,
     is_batched: bool = False,
 ) -> IterableDataset:
-    """Transform the dataset by applying the data transforms."""
+    """通过应用数据变换来变换数据集。"""
     norm_stats = {}
     if data_config.repo_id != "fake" and not skip_norm_stats:
         if data_config.norm_stats is None:
@@ -229,15 +229,15 @@ def create_data_loader(
     skip_norm_stats: bool = False,
     framework: Literal["jax", "pytorch"] = "jax",
 ) -> DataLoader[tuple[_model.Observation, _model.Actions]]:
-    """Create a data loader for training.
+    """为训练创建数据加载器。
 
     Args:
-        config: The training configuration.
-        sharding: The sharding to use for the data loader (JAX only).
-        shuffle: Whether to shuffle the data.
-        num_batches: Determines the number of batches to return.
-        skip_norm_stats: Whether to skip data normalization.
-        framework: The framework to use ("jax" or "pytorch").
+        config: 训练配置。
+        sharding: 数据加载器使用的分片（仅 JAX）。
+        shuffle: 是否打乱数据。
+        num_batches: 决定返回的批次数量。
+        skip_norm_stats: 是否跳过数据归一化。
+        framework: 使用的框架（"jax" 或 "pytorch"）。
     """
     data_config = config.data.create(config.assets_dirs, config.model)
     logging.info(f"data_config: {data_config}")
@@ -282,29 +282,29 @@ def create_torch_data_loader(
     seed: int = 0,
     framework: str = "jax",
 ) -> DataLoader[tuple[_model.Observation, _model.Actions]]:
-    """Create a data loader for training.
+    """为训练创建数据加载器。
 
     Args:
-        data_config: The data configuration.
-        action_horizon: The action horizon.
-        batch_size: The batch size.
-        sharding: The sharding to use for the data loader. If None, the data loader will
-            use a single device sharding.
-        skip_norm_stats: Whether to skip data normalization.
-        shuffle: Whether to shuffle the data.
-        num_batches: Determines the number of batches to return. If the number exceeds the
-            number of batches in the dataset, the data loader will loop over the dataset.
-            If not provided, will iterate over the dataset indefinitely.
-        num_workers: The number of worker processes to use. If zero, the data loader will
-            execute in the main process.
-        seed: The seed to use for shuffling the data.
+        data_config: 数据配置。
+        action_horizon: 动作视野（action horizon）。
+        batch_size: 批次大小。
+        sharding: 数据加载器使用的分片。若为 None，数据加载器将
+            使用单设备分片。
+        skip_norm_stats: 是否跳过数据归一化。
+        shuffle: 是否打乱数据。
+        num_batches: 决定返回的批次数量。如果该数量超过
+            数据集中的批次数量，数据加载器将循环遍历数据集。
+            若未提供，则无限期地遍历数据集。
+        num_workers: 使用的工作进程数量。若为零，数据加载器将
+            在主进程中执行。
+        seed: 用于打乱数据的种子。
     """
     dataset = create_torch_dataset(data_config, action_horizon, model_config)
     dataset = transform_dataset(dataset, data_config, skip_norm_stats=skip_norm_stats)
 
-    # Use TorchDataLoader for both frameworks
-    # For PyTorch DDP, create DistributedSampler and divide batch size by world size
-    # For JAX, divide by process count
+    # 两个框架都使用 TorchDataLoader
+    # 对于 PyTorch DDP，创建 DistributedSampler 并将批次大小除以 world size
+    # 对于 JAX，除以进程数
     sampler = None
     if framework == "pytorch":
         if torch.distributed.is_initialized():
@@ -326,7 +326,7 @@ def create_torch_data_loader(
         dataset,
         local_batch_size=local_batch_size,
         sharding=None if framework == "pytorch" else sharding,
-        shuffle=(sampler is None and shuffle),  # Don't shuffle if using sampler
+        shuffle=(sampler is None and shuffle),  # 使用 sampler 时不打乱
         sampler=sampler,
         num_batches=num_batches,
         num_workers=num_workers,
@@ -348,21 +348,21 @@ def create_rlds_data_loader(
     num_batches: int | None = None,
     framework: str = "jax",
 ) -> DataLoader[tuple[_model.Observation, _model.Actions]]:
-    """Create an RLDS data loader for training.
+    """为训练创建 RLDS 数据加载器。
 
-    Note: This data loader requires some extra dependencies -- see examples/droid/README_train.md
+    Note: 该数据加载器需要一些额外的依赖 -- 参见 examples/droid/README_train.md
 
     Args:
-        data_config: The data configuration.
-        action_horizon: The action horizon.
-        batch_size: The batch size.
-        sharding: The sharding to use for the data loader. If None, the data loader will
-            use a single device sharding.
-        skip_norm_stats: Whether to skip data normalization.
-        shuffle: Whether to shuffle the data.
-        num_batches: Determines the number of batches to return. If the number exceeds the
-            number of batches in the dataset, the data loader will loop over the dataset.
-            If not provided, will iterate over the dataset indefinitely.
+        data_config: 数据配置。
+        action_horizon: 动作视野（action horizon）。
+        batch_size: 批次大小。
+        sharding: 数据加载器使用的分片。若为 None，数据加载器将
+            使用单设备分片。
+        skip_norm_stats: 是否跳过数据归一化。
+        shuffle: 是否打乱数据。
+        num_batches: 决定返回的批次数量。如果该数量超过
+            数据集中的批次数量，数据加载器将循环遍历数据集。
+            若未提供，则无限期地遍历数据集。
     """
     if framework == "pytorch":
         raise NotImplementedError("PyTorch RLDS data loader is not supported yet")
@@ -379,7 +379,7 @@ def create_rlds_data_loader(
 
 
 class TorchDataLoader:
-    """Torch data loader implementation."""
+    """Torch 数据加载器的实现。"""
 
     def __init__(
         self,
@@ -394,20 +394,20 @@ class TorchDataLoader:
         seed: int = 0,
         framework: str = "jax",
     ):
-        """Create a PyTorch data loader.
+        """创建 PyTorch 数据加载器。
 
         Args:
-            dataset: The dataset to load.
-            local_batch_size: The local batch size for each process.
-            sharding: The sharding to use for the data loader.
-            shuffle: Whether to shuffle the data.
-            num_batches: If provided, determines the number of returned batches. If the
-                number is larger than the number of batches in the dataset, the data loader
-                will loop over the dataset. If not provided, will iterate over the dataset
-                indefinitely.
-            num_workers: The number of worker processes to use. If zero, the data loader will
-                execute in the main process.
-            seed: The seed to use for shuffling the data.
+            dataset: 要加载的数据集。
+            local_batch_size: 每个进程的本地批次大小。
+            sharding: 数据加载器使用的分片。
+            shuffle: 是否打乱数据。
+            num_batches: 若提供，决定返回的批次数量。如果该
+                数量大于数据集中的批次数量，数据加载器
+                将循环遍历数据集。若未提供，则无限期地遍历
+                数据集。
+            num_workers: 使用的工作进程数量。若为零，数据加载器将
+                在主进程中执行。
+            seed: 用于打乱数据的种子。
         """
         if jax.process_count() > 1:
             raise NotImplementedError("Data loading with multiple processes is not supported.")
@@ -415,10 +415,10 @@ class TorchDataLoader:
         if len(dataset) < local_batch_size:
             raise ValueError(f"Local batch size ({local_batch_size}) is larger than the dataset size ({len(dataset)}).")
 
-        # Store sharding - None for PyTorch, JAX sharding for JAX
+        # 存储 sharding - PyTorch 为 None，JAX 为 JAX 的 sharding
         self._sharding = sharding
         if sharding is None and framework == "jax":
-            # Use data parallel sharding by default for JAX only.
+            # 仅对 JAX 默认使用数据并行分片。
             self._sharding = jax.sharding.NamedSharding(
                 jax.sharding.Mesh(jax.devices(), ("B",)),
                 jax.sharding.PartitionSpec("B"),
@@ -434,7 +434,7 @@ class TorchDataLoader:
         self._data_loader = torch.utils.data.DataLoader(
             typing.cast(torch.utils.data.Dataset, dataset),
             batch_size=local_batch_size,
-            shuffle=(sampler is None and shuffle),  # Don't shuffle if using sampler
+            shuffle=(sampler is None and shuffle),  # 使用 sampler 时不打乱
             sampler=sampler,
             num_workers=num_workers,
             multiprocessing_context=mp_context,
@@ -459,9 +459,9 @@ class TorchDataLoader:
                 try:
                     batch = next(data_iter)
                 except StopIteration:
-                    break  # We've exhausted the dataset. Create a new iterator and start over.
+                    break  # 我们已遍历完数据集。创建一个新的迭代器并重新开始。
                 num_items += 1
-                # For JAX, convert to sharded arrays; for PyTorch, return torch tensors
+                # 对于 JAX，转换为分片数组；对于 PyTorch，返回 torch 张量
                 if self._sharding is not None:
                     yield jax.tree.map(lambda x: jax.make_array_from_process_local_data(self._sharding, x), batch)
                 else:
@@ -469,24 +469,24 @@ class TorchDataLoader:
 
 
 def _collate_fn(items):
-    """Collate the batch elements into batched numpy arrays."""
-    # Make sure to convert to numpy arrays before stacking since some of the incoming elements
-    # may be JAX arrays.
+    """将批次元素合并（collate）为批次的 numpy 数组。"""
+    # 在堆叠（stack）之前一定要先转换为 numpy 数组，因为传入的部分元素
+    # 可能是 JAX 数组。
     return jax.tree.map(lambda *xs: np.stack([np.asarray(x) for x in xs], axis=0), *items)
 
 
 def _worker_init_fn(worker_id: int) -> None:
-    """Tell JAX inside the worker process not to preallocate the GPU memory."""
-    # NOTE: This is called after jax is imported inside the worker process. This
-    # means that this approach will not work for selecting the backend.
+    """告知工作进程内部的 JAX 不要预分配 GPU 内存。"""
+    # NOTE：这会在工作进程内部导入 jax 之后被调用。这意味着
+    # 这种方法对于选择后端（backend）并不可行。
     os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
     os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
 
 class RLDSDataLoader:
-    """Shallow wrapper around the DROID data loader to make it compatible with openpi.
+    """对 DROID 数据加载器的轻量包装，使其与 openpi 兼容。
 
-    All batching already happens in the DROID dataset, so we don't need to do anything here.
+    所有的批处理已经在 DROID 数据集中完成，所以这里我们无需做任何事情。
     """
 
     def __init__(
@@ -503,7 +503,7 @@ class RLDSDataLoader:
             raise NotImplementedError("Data loading with multiple processes is not supported.")
 
         if sharding is None:
-            # Use data parallel sharding by default.
+            # 默认使用数据并行分片。
             sharding = jax.sharding.NamedSharding(
                 jax.sharding.Mesh(jax.devices(), ("B",)),
                 jax.sharding.PartitionSpec("B"),
@@ -522,7 +522,7 @@ class RLDSDataLoader:
                 try:
                     batch = next(data_iter)
                 except StopIteration:
-                    break  # We've exhausted the dataset. Create a new iterator and start over.
+                    break  # 我们已遍历完数据集。创建一个新的迭代器并重新开始。
                 num_items += 1
                 yield jax.tree.map(lambda x: jax.make_array_from_process_local_data(self._sharding, x), batch)
 
